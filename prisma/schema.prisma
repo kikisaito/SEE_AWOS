@@ -1,0 +1,126 @@
+// 1. Configuración del Generador y la Fuente de Datos
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  
+}
+
+// --- TABLAS PRINCIPALES ---
+
+model User {
+  userId          String    @id @default(uuid()) @map("user_id")
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  preferredName   String?   @map("preferred_name")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relaciones
+  capsules        Capsule[]
+  crisisSessions  CrisisSession[]
+  victories       UserVictory[]
+
+  @@map("users") // Nombre real de la tabla en PostgreSQL
+}
+
+model Capsule {
+  capsuleId       String    @id @default(uuid()) @map("capsule_id")
+  userId          String    @map("user_id")
+  targetEmotionId Int       @map("target_emotion_id")
+  title           String    @db.VarChar(150)
+  
+  // --- ADAPTACIÓN PARA S3 Y AUDIO ---
+  // Cambiamos content_text a opcional (String?) porque si es audio, podría no tener texto.
+  contentType     ContentType @default(TEXT) @map("content_type")
+  contentText     String?     @map("content_text") @db.Text
+  s3Key           String?     @map("s3_key") // Aquí guardaremos la ruta de AWS (ej: "users/123/audio.mp3")
+  // ----------------------------------
+
+  isActive        Boolean   @default(true) @map("is_active")
+  usageCount      Int       @default(0) @map("usage_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relaciones
+  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  targetEmotion   EmotionCatalog @relation(fields: [targetEmotionId], references: [emotionId])
+  usedInCrisis    CrisisSession[]
+
+  @@map("capsules")
+}
+
+model CrisisSession {
+  crisisId        String    @id @default(uuid()) @map("crisis_id")
+  userId          String    @map("user_id")
+  initialEmotionId Int      @map("initial_emotion_id")
+  
+  usedCapsuleId   String?   @map("used_capsule_id")
+  finalEvaluationId Int?    @map("final_evaluation_id")
+  
+  breathingExerciseCompleted Boolean @default(false) @map("breathing_exercise_completed")
+  
+  startedAt       DateTime  @default(now()) @map("started_at")
+  endedAt         DateTime? @map("ended_at")
+
+  // Relaciones
+  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  initialEmotion  EmotionCatalog @relation(fields: [initialEmotionId], references: [emotionId])
+  usedCapsule     Capsule?  @relation(fields: [usedCapsuleId], references: [capsuleId]) // Puede ser null
+  finalEvaluation EvaluationScaleCatalog? @relation(fields: [finalEvaluationId], references: [evaluationId])
+
+  @@map("crisis_sessions")
+}
+
+model UserVictory {
+  victoryId       String    @id @default(uuid()) @map("victory_id")
+  userId          String    @map("user_id")
+  victoryTypeId   Int       @map("victory_type_id")
+  occurredAt      DateTime  @default(now()) @map("occurred_at")
+
+  // Relaciones
+  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId])
+
+  @@map("user_victories")
+}
+
+// --- CATÁLOGOS (LOOKUP TABLES) ---
+
+model EmotionCatalog {
+  emotionId       Int       @id @default(autoincrement()) @map("emotion_id")
+  name            String    @unique @db.VarChar(50)
+
+  // Relaciones inversas (para que Prisma sepa navegar)
+  capsules        Capsule[]
+  crisisSessions  CrisisSession[]
+
+  @@map("emotions_catalog")
+}
+
+model VictoryTypeCatalog {
+  victoryTypeId   Int       @id @default(autoincrement()) @map("victory_type_id")
+  name            String    @unique @db.VarChar(50)
+
+  // Relaciones inversas
+  victories       UserVictory[]
+
+  @@map("victory_types_catalog")
+}
+
+model EvaluationScaleCatalog {
+  evaluationId    Int       @id @default(autoincrement()) @map("evaluation_id")
+  description     String    @unique @db.VarChar(50)
+
+  // Relaciones inversas
+  crisisSessions  CrisisSession[]
+
+  @@map("evaluation_scales_catalog")
+}
+
+// --- ENUMS AUXILIARES ---
+enum ContentType {
+  TEXT
+  AUDIO
+}
