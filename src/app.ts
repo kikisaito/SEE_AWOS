@@ -1,24 +1,31 @@
-import dotenv from 'dotenv';
-dotenv.config(); 
-
 import express from 'express';
-import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Importación de rutas
 import authRoutes from './routes/auth.routes';
 import capsuleRoutes from './routes/capsule.routes';
 
+dotenv.config();
+
 const app = express();
 
-app.use(cors());
-app.use(express.json()); 
+// Middlewares
+app.use(express.json());
 
+// --- ZONA DE RUTAS ---
 app.use('/api/auth', authRoutes);
 app.use('/api/capsules', capsuleRoutes);
 
+
 app.get('/', (req, res) => {
-  res.send('API de AWOS levantada y lista ');
+  res.send('Servidor AWOS funcionando ');
 });
 
+
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor AWOS corriendo en: http://localhost:${PORT}`);
 });
+
+export default app;
