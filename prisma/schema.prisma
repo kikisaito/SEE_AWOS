@@ -1,4 +1,4 @@
-// 1. Configuración del Generador y la Fuente de Datos
+// 1. Configuración
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,35 +17,33 @@ model User {
   preferredName   String?   @map("preferred_name")
   createdAt       DateTime  @default(now()) @map("created_at")
 
-  // Relaciones
   capsules        Capsule[]
   crisisSessions  CrisisSession[]
   victories       UserVictory[]
 
-  @@map("users") // Nombre real de la tabla en PostgreSQL
+  @@map("users")
 }
 
 model Capsule {
   capsuleId       String    @id @default(uuid()) @map("capsule_id")
   userId          String    @map("user_id")
-  targetEmotionId Int       @map("target_emotion_id")
   title           String    @db.VarChar(150)
   
-  // --- ADAPTACIÓN PARA S3 Y AUDIO ---
-  // Cambiamos content_text a opcional (String?) porque si es audio, podría no tener texto.
   contentType     ContentType @default(TEXT) @map("content_type")
   contentText     String?     @map("content_text") @db.Text
-  s3Key           String?     @map("s3_key") // Aquí guardaremos la ruta de AWS (ej: "users/123/audio.mp3")
-  // ----------------------------------
+  s3Key           String?     @map("s3_key")
 
   isActive        Boolean   @default(true) @map("is_active")
   usageCount      Int       @default(0) @map("usage_count")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  // Relaciones
+  // RELACIONES
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  targetEmotion   EmotionCatalog @relation(fields: [targetEmotionId], references: [emotionId])
+  
+  // CAMBIO CRÍTICO: Una cápsula puede servir para MUCHAS emociones
+  targetEmotions  EmotionCatalog[] @relation("CapsuleEmotions")
+  
   usedInCrisis    CrisisSession[]
 
   @@map("capsules")
@@ -54,20 +52,33 @@ model Capsule {
 model CrisisSession {
   crisisId        String    @id @default(uuid()) @map("crisis_id")
   userId          String    @map("user_id")
-  initialEmotionId Int      @map("initial_emotion_id")
   
+  // CAMBIO CRÍTICO: Una crisis puede tener MUCHAS emociones al inicio
+  selectedEmotions EmotionCatalog[] @relation("CrisisEmotions")
+
+  // DATOS DE REFLEXIÓN (Basado en image_8ebf40.png)
+  intensityLevel  Int       @default(5) @map("intensity_level") // Aunque no salga en UI, lo pediste para reporte
+  triggerDesc     String?   @map("trigger_description") @db.Text // "¿Qué pasó antes?"
+  location        String?   @map("location") @db.VarChar(100)    // "Casa", "Trabajo", "Otro: Parque"
+  companion       String?   @map("companion") @db.VarChar(100)   // "Solo/a", "Familia", "Otro: Novio"
+  substanceUse    String?   @map("substance_use") @db.VarChar(50)// "No", "Si - Alcohol", etc.
+
+  // ESTADO DE LA REFLEXIÓN (Para image_8ec302.png "Reflexiones pendientes")
+  isReflectionCompleted Boolean @default(false) @map("is_reflection_completed")
+
+  // Uso de herramientas
   usedCapsuleId   String?   @map("used_capsule_id")
-  finalEvaluationId Int?    @map("final_evaluation_id")
-  
   breathingExerciseCompleted Boolean @default(false) @map("breathing_exercise_completed")
   
+  // Evaluación final ("Mejor", "Igual", "Peor")
+  finalEvaluationId Int?    @map("final_evaluation_id")
+
   startedAt       DateTime  @default(now()) @map("started_at")
   endedAt         DateTime? @map("ended_at")
 
   // Relaciones
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  initialEmotion  EmotionCatalog @relation(fields: [initialEmotionId], references: [emotionId])
-  usedCapsule     Capsule?  @relation(fields: [usedCapsuleId], references: [capsuleId]) // Puede ser null
+  usedCapsule     Capsule?  @relation(fields: [usedCapsuleId], references: [capsuleId])
   finalEvaluation EvaluationScaleCatalog? @relation(fields: [finalEvaluationId], references: [evaluationId])
 
   @@map("crisis_sessions")
@@ -79,22 +90,21 @@ model UserVictory {
   victoryTypeId   Int       @map("victory_type_id")
   occurredAt      DateTime  @default(now()) @map("occurred_at")
 
-  // Relaciones
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
   victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId])
 
   @@map("user_victories")
 }
 
-// --- CATÁLOGOS (LOOKUP TABLES) ---
+// --- CATÁLOGOS ---
 
 model EmotionCatalog {
   emotionId       Int       @id @default(autoincrement()) @map("emotion_id")
   name            String    @unique @db.VarChar(50)
 
-  // Relaciones inversas (para que Prisma sepa navegar)
-  capsules        Capsule[]
-  crisisSessions  CrisisSession[]
+  // Prisma crea automáticamente las tablas intermedias ("Pivot Tables")
+  capsules        Capsule[]       @relation("CapsuleEmotions")
+  crisisSessions  CrisisSession[] @relation("CrisisEmotions")
 
   @@map("emotions_catalog")
 }
@@ -102,8 +112,6 @@ model EmotionCatalog {
 model VictoryTypeCatalog {
   victoryTypeId   Int       @id @default(autoincrement()) @map("victory_type_id")
   name            String    @unique @db.VarChar(50)
-
-  // Relaciones inversas
   victories       UserVictory[]
 
   @@map("victory_types_catalog")
@@ -111,15 +119,12 @@ model VictoryTypeCatalog {
 
 model EvaluationScaleCatalog {
   evaluationId    Int       @id @default(autoincrement()) @map("evaluation_id")
-  description     String    @unique @db.VarChar(50)
-
-  // Relaciones inversas
+  description     String    @unique @db.VarChar(50) // "Mejor", "Igual", "Peor"
   crisisSessions  CrisisSession[]
 
   @@map("evaluation_scales_catalog")
 }
 
-// --- ENUMS AUXILIARES ---
 enum ContentType {
   TEXT
   AUDIO
