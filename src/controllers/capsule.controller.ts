@@ -2,18 +2,28 @@ import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
 import prisma from '../config/prisma'; 
 import { generateUploadUrl } from '../services/s3.service';
-
+interface AuthRequest extends Request {
+  user?: {
+    userId: string;
+    email: string;
+  };
+}
 
 export const requestUpload = async (req: Request, res: Response) => {
   try {
-    const { fileName, userId } = req.body;
-    const finalUserId = userId || "temp-user-123"; 
+    const { fileName } = req.body;
+    
+    const userId = (req as AuthRequest).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Usuario no autenticado" });
+    }
 
     if (!fileName) {
       return res.status(400).json({ error: "Nombre de archivo requerido" });
     }
 
-    const data = await generateUploadUrl(finalUserId, fileName);
+    const data = await generateUploadUrl(userId, fileName);
     res.json(data);
   } catch (error) {
     console.error("Error S3:", error);
@@ -21,38 +31,46 @@ export const requestUpload = async (req: Request, res: Response) => {
   }
 };
 
+
 export const createCapsule = async (req: Request, res: Response) => {
   try {
-    const { s3Key, emotionId, description, userId, title } = req.body;
+  
+    const { s3Key, emotionId, description, title } = req.body;
+    
+    
+    const userId = (req as AuthRequest).user?.userId;
 
-    // Validación
-    if (!s3Key || !userId || !emotionId) {
-      return res.status(400).json({ 
-        error: "Faltan datos obligatorios: s3Key, userId o emotionId" 
-      });
+    if (!userId) {
+      return res.status(401).json({ error: "Usuario no identificado en el token" });
     }
 
     
+    if (!s3Key || !emotionId) {
+      return res.status(400).json({ 
+        error: "Faltan datos obligatorios: s3Key o emotionId" 
+      });
+    }
+
     const newCapsule = await prisma.capsule.create({
       data: {
         s3Key: s3Key,
-        userId: userId,
+        userId: userId, 
         targetEmotionId: Number(emotionId),
-        title: title || `Cápsula de Audio - ${new Date().toLocaleDateString()}`,
+        title: title || `Cápsula - ${new Date().toLocaleDateString()}`,
         contentText: description || "",  
         contentType: 'AUDIO' as ContentType, 
       },
     });
 
     res.status(201).json({ 
-      message: "Cápsula guardada exitosamente en la DB", 
+      message: "Cápsula guardada exitosamente", 
       capsule: newCapsule 
     });
 
   } catch (error) {
     console.error(" Error al guardar en DB:", error);
     res.status(500).json({ 
-      error: "No se pudo guardar la cápsula en la base de datos",
+      error: "Error interno",
       details: String(error)
     });
   }

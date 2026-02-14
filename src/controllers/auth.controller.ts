@@ -1,15 +1,14 @@
 import { Request, Response } from 'express';
-// BORRA ESTO: import { PrismaClient } from '@prisma/client';
-// BORRA ESTO: const prisma = new PrismaClient();
-
-// AGREGA ESTO: Importamos la instancia segura que acabamos de crear
 import prisma from '../config/prisma'; 
 import { hashPassword, comparePassword, generateToken } from '../services/auth.service';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
 
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, preferredName } = req.body;
-
+    
     // Validación
     if (!email || !password || !preferredName) {
         return res.status(400).json({ error: 'Faltan datos: email, password o preferredName' });
@@ -32,7 +31,7 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({ token, userId: user.userId });
 
   } catch (error) {
-    console.error("🔴 ERROR CRÍTICO EN REGISTER:", error);
+    console.error("ERROR CRÍTICO EN REGISTER:", error);
     res.status(500).json({ 
         error: 'Error interno al registrar usuario', 
         details: String(error)
@@ -40,22 +39,57 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+
+      const user = await prisma.user.findUnique({
+      where: { email: email },
+    });
+
     
     // Usamos la misma instancia 'prisma' importada
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user || !(await comparePassword(password, user.passwordHash))) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+    const users_find = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciales inválidas (Usuario no encontrado)' });
     }
 
-    const token = generateToken(user.userId);
-    res.json({ token, userId: user.userId });
+
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Credenciales inválidas (Contraseña incorrecta)' });
+    }
+
+
+    const secret = process.env.JWT_SECRET || 'secreto_temporal';
+    const token_users = jwt.sign(
+      { userId: user.userId, email: user.email }, 
+      secret,
+      { expiresIn: '24h' } 
+    );
+
+    
+res.json({
+      message: 'Login exitoso',
+      token: token_users,
+      user: {
+        id: user.userId,
+        email: user.email,
+        name: user.preferredName
+      }
+    });
 
   } catch (error) {
-    console.error("🔴 ERROR CRÍTICO EN LOGIN:", error);
-    res.status(500).json({ error: 'Error al procesar el login', details: String(error) });
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
