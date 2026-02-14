@@ -75,3 +75,41 @@ export const createCapsule = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+
+export const getCapsules = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Usuario no autenticado" });
+    }
+
+   
+    const capsules = await prisma.capsule.findMany({
+      where: {
+        userId: userId // Filtro mágico: solo las mías
+      },
+      orderBy: {
+        createdAt: 'desc' // Las más nuevas primero
+      },
+      // (Opcional) Incluimos el nombre de la emoción para que se vea bonito
+      include: {
+        targetEmotion: true 
+      }
+    });
+
+    res.json({
+      message: "Cápsulas recuperadas exitosamente",
+      count: capsules.length,
+      capsules: capsules
+    });
+
+  } catch (error) {
+    console.error("Error al obtener cápsulas:", error);
+    res.status(500).json({ error: "Error interno al obtener las cápsulas" });
+  }
+};
