@@ -35,31 +35,37 @@ export const requestUpload = async (req: Request, res: Response) => {
 export const createCapsule = async (req: Request, res: Response) => {
   try {
   
-    const { s3Key, emotionId, description, title } = req.body;
-    
-    
+    const { s3Key, emotionIds, description, title } = req.body;
     const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Usuario no identificado en el token" });
     }
 
-    
-    if (!s3Key || !emotionId) {
+    if (!s3Key || !emotionIds || !Array.isArray(emotionIds) || emotionIds.length === 0) {
       return res.status(400).json({ 
-        error: "Faltan datos obligatorios: s3Key o emotionId" 
+        error: "Faltan datos: s3Key y un array de emotionIds (ej: [1, 2]) son obligatorios" 
       });
     }
 
     const newCapsule = await prisma.capsule.create({
       data: {
         s3Key: s3Key,
-        userId: userId, 
-        targetEmotionId: Number(emotionId),
+        userId: userId,
         title: title || `Cápsula - ${new Date().toLocaleDateString()}`,
         contentText: description || "",  
-        contentType: 'AUDIO' as ContentType, 
+        contentType: 'AUDIO' as ContentType,
+        
+        // --- AQUÍ ESTÁ LA MAGIA DEL MANY-TO-MANY ---
+        // Conectamos la cápsula con MÚLTIPLES emociones a la vez
+        targetEmotions: {
+          connect: emotionIds.map((id: number) => ({ emotionId: Number(id) }))
+        }
       },
+      // Incluimos las emociones en la respuesta para confirmar que se guardaron
+      include: {
+        targetEmotions: true
+      }
     });
 
     res.status(201).json({ 
@@ -98,7 +104,7 @@ export const getCapsules = async (req: Request, res: Response) => {
       },
       // (Opcional) Incluimos el nombre de la emoción para que se vea bonito
       include: {
-        targetEmotion: true 
+        targetEmotions: true 
       }
     });
 
