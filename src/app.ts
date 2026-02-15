@@ -5,6 +5,10 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import capsuleRoutes from './routes/capsule.routes';
 import crisisRoutes from './routes/crisis.routes';
+import victoryRoutes from './routes/victory.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+
+
 
 dotenv.config();
 
@@ -17,6 +21,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/capsules', capsuleRoutes);
 app.use('/api/crisis', crisisRoutes);
+app.use('/api/victories', victoryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 app.get('/', (req, res) => {
