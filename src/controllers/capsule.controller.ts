@@ -79,52 +79,40 @@ export const requestUpload = async (req: Request, res: Response) => {
 };
 
 
+
 export const createCapsule = async (req: Request, res: Response) => {
   try {
-  
-    const { s3Key, emotionIds, description, title } = req.body;
     const userId = (req as AuthRequest).user?.userId;
+  
+    const { title, contentType, contentText, s3Key, emotionIds } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({ error: "Usuario no identificado en el token" });
+    if (!userId) return res.status(401).json({ error: "No autorizado" });
+
+    
+    if (contentType === 'TEXT' && !contentText) {
+      return res.status(400).json({ error: "Falta el texto de la cápsula" });
     }
-
-    if (!s3Key || !emotionIds || !Array.isArray(emotionIds) || emotionIds.length === 0) {
-      return res.status(400).json({ 
-        error: "Faltan datos: s3Key y un array de emotionIds (ej: [1, 2]) son obligatorios" 
-      });
+    if (contentType === 'AUDIO' && !s3Key) {
+      return res.status(400).json({ error: "Falta el archivo de audio (s3Key)" });
     }
 
     const newCapsule = await prisma.capsule.create({
       data: {
-        s3Key: s3Key,
-        userId: userId,
-        title: title || `Cápsula - ${new Date().toLocaleDateString()}`,
-        contentText: description || "",  
-        contentType: 'AUDIO' as ContentType,
-        
-       
+        userId,
+        title,
+        contentType, 
+        contentText: contentType === 'TEXT' ? contentText : null,
+        s3Key: contentType === 'AUDIO' ? s3Key : null,
         targetEmotions: {
-          connect: emotionIds.map((id: number) => ({ emotionId: Number(id) }))
+          connect: emotionIds?.map((id: number) => ({ emotionId: id })) || []
         }
-      },
-      // Incluimos las emociones en la respuesta para confirmar que se guardaron
-      include: {
-        targetEmotions: true
       }
     });
 
-    res.status(201).json({ 
-      message: "Cápsula guardada exitosamente", 
-      capsule: newCapsule 
-    });
-
+    res.status(201).json(newCapsule);
   } catch (error) {
-    console.error(" Error al guardar en DB:", error);
-    res.status(500).json({ 
-      error: "Error interno",
-      details: String(error)
-    });
+    console.error("Error creando cápsula:", error);
+    res.status(500).json({ error: "Error interno" });
   }
 };
 

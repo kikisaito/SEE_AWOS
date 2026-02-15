@@ -1,46 +1,90 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 
-interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-    email: string;
-  };
-}
+interface AuthRequest extends Request { user?: { userId: string } }
+
+
+export const getVictoryTypes = async (req: Request, res: Response) => {
+  const userId = (req as AuthRequest).user?.userId;
+  
+  const types = await prisma.victoryTypeCatalog.findMany({
+    where: {
+      OR: [
+        { userId: null },      
+        { userId: userId }     // Mías
+      ]
+    },
+    orderBy: { victoryTypeId: 'asc' }
+  });
+  res.json(types);
+};
 
 export const registerVictories = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
-    const { victoryTypeIds } = req.body;
+    const { victoryTypeIds, newCustomVictoryName } = req.body; 
 
-    if (!userId) {
-      return res.status(401).json({ error: "Usuario no autenticado" });
-    }
+    if (!userId) return res.status(401).json({ error: "No autorizado" });
+
+    const createdVictories = [];
 
     
-    if (!victoryTypeIds || !Array.isArray(victoryTypeIds) || victoryTypeIds.length === 0) {
-      return res.status(400).json({ 
-        error: "Debes enviar una lista de victorias (ej: [1, 2])" 
+    if (newCustomVictoryName && typeof newCustomVictoryName === 'string') {
+      const customType = await prisma.victoryTypeCatalog.create({
+        data: {
+          name: newCustomVictoryName,
+          userId: userId
+        }
       });
+      
+      if (!victoryTypeIds) {
+         
+      }
+     
     }
 
-   
-    const result = await prisma.userVictory.createMany({
-      data: victoryTypeIds.map((id: number) => ({
-        userId: userId,
-        victoryTypeId: Number(id),
-        occurredAt: new Date()
-      }))
+    // Lo mejor es que el frontend haga dos llamadas: 
+    //   1. Crear Tipo Personalizado (si hay texto).
+    //   2. Registrar Victorias (con los IDs).
+    
+    
+    await prisma.$transaction(async (tx) => {
+      let finalIds = Array.isArray(victoryTypeIds) ? victoryTypeIds : [];
+
+      
+      if (newCustomVictoryName) {
+        
+        const existing = await tx.victoryTypeCatalog.findFirst({
+            where: { name: newCustomVictoryName, userId }
+        });
+
+        let typeId;
+        if (existing) {
+            typeId = existing.victoryTypeId;
+        } else {
+            const newType = await tx.victoryTypeCatalog.create({
+                data: { name: newCustomVictoryName, userId }
+            });
+            typeId = newType.victoryTypeId;
+        }
+        finalIds.push(typeId);
+      }
+
+     
+      if (finalIds.length > 0) {
+        await tx.userVictory.createMany({
+          data: finalIds.map((id: number) => ({
+            userId,
+            victoryTypeId: Number(id)
+          }))
+        });
+      }
     });
 
-    res.status(201).json({
-      message: "Victorias registradas. ¡Sigue así!",
-      count: result.count, 
-      data: victoryTypeIds // Devolvemos lo que guardó para feedback visual
-    });
+    res.status(201).json({ message: "Victorias registradas con éxito" });
 
   } catch (error) {
-    console.error("Error al registrar victorias:", error);
-    res.status(500).json({ error: "Error interno al guardar victorias" });
+    console.error(error);
+    res.status(500).json({ error: "Error registrando victorias" });
   }
 };

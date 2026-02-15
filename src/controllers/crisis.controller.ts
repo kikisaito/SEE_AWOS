@@ -116,3 +116,48 @@ export const updateCrisis = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno al actualizar crisis" });
   }
 };
+
+
+
+
+export const updateCrisisReflection = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as AuthRequest).user?.userId;
+    
+   
+    const { 
+      triggerDesc, 
+      location, 
+      companion, 
+      substanceUse, 
+      notes 
+    } = req.body;
+
+    
+    if (!location || !companion || !substanceUse) {
+      return res.status(400).json({ error: "Completa los campos obligatorios (*)" });
+    }
+
+    const updated = await prisma.crisisSession.update({
+      where: { 
+       crisisId: String(id), 
+        userId },
+      data: {
+        
+        triggerDesc: triggerDesc ? String(triggerDesc) : null,
+        location: String(location),
+        companion: String(companion),
+        substanceUse: String(substanceUse),
+        notes: notes ? String(notes) : null,
+        
+        isReflectionCompleted: true
+      }
+    });
+
+    res.json({ message: "Reflexión guardada", data: updated });
+  } catch (error) {
+    console.error("Error reflexión:", error);
+    res.status(500).json({ error: "Error al guardar reflexión" });
+  }
+};
