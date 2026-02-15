@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
 import prisma from '../config/prisma'; 
 import { generateUploadUrl } from '../services/s3.service';
+
 interface AuthRequest extends Request {
   user?: {
     userId: string;
@@ -9,25 +10,71 @@ interface AuthRequest extends Request {
   };
 }
 
-export const requestUpload = async (req: Request, res: Response) => {
+
+export const getPresignedUrl = async (req: Request, res: Response) => {
   try {
-    const { fileName } = req.body;
-    
     const userId = (req as AuthRequest).user?.userId;
+    const { fileName, fileType } = req.query; 
 
     if (!userId) {
       return res.status(401).json({ error: "Usuario no autenticado" });
     }
 
-    if (!fileName) {
-      return res.status(400).json({ error: "Nombre de archivo requerido" });
+    if (!fileName || !fileType) {
+      return res.status(400).json({ error: "Faltan parámetros: fileName y fileType son requeridos" });
     }
 
-    const data = await generateUploadUrl(userId, fileName);
+    // Llamamos al servicio S3
+    const { uploadUrl, key } = await generateUploadUrl(
+      userId, 
+      String(fileName), 
+      String(fileType)
+    );
+
+    res.json({
+      uploadUrl, 
+      s3Key: key 
+    });
+
+  } catch (error) {
+    console.error("Error obteniendo URL firmada:", error);
+    res.status(500).json({ error: "Error al conectar con el servicio de almacenamiento" });
+  }
+};
+
+
+
+
+
+
+export const requestUpload = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user?.userId;
+    
+    
+    const { fileName, fileType } = req.query; 
+
+    if (!userId) {
+      return res.status(401).json({ error: "Usuario no autenticado" });
+    }
+
+    
+    if (!fileName || !fileType) {
+      return res.status(400).json({ error: "Nombre de archivo y tipo (fileType) requeridos" });
+    }
+
+   
+    const data = await generateUploadUrl(
+        userId, 
+        String(fileName), 
+        String(fileType) 
+    );
+
     res.json(data);
+
   } catch (error) {
     console.error("Error S3:", error);
-    res.status(500).json({ error: "Error al solicitar subida", details: error });
+    res.status(500).json({ error: "Error al generar URL de subida" });
   }
 };
 
@@ -56,8 +103,7 @@ export const createCapsule = async (req: Request, res: Response) => {
         contentText: description || "",  
         contentType: 'AUDIO' as ContentType,
         
-        // --- AQUÍ ESTÁ LA MAGIA DEL MANY-TO-MANY ---
-        // Conectamos la cápsula con MÚLTIPLES emociones a la vez
+       
         targetEmotions: {
           connect: emotionIds.map((id: number) => ({ emotionId: Number(id) }))
         }
@@ -97,12 +143,12 @@ export const getCapsules = async (req: Request, res: Response) => {
    
     const capsules = await prisma.capsule.findMany({
       where: {
-        userId: userId // Filtro mágico: solo las mías
+        userId: userId 
       },
       orderBy: {
-        createdAt: 'desc' // Las más nuevas primero
+        createdAt: 'desc' 
       },
-      // (Opcional) Incluimos el nombre de la emoción para que se vea bonito
+      
       include: {
         targetEmotions: true 
       }
