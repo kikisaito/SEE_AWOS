@@ -62,7 +62,8 @@ model CrisisSession {
   location        String?   @map("location") @db.VarChar(100)    // "Casa", "Trabajo", "Otro: Parque"
   companion       String?   @map("companion") @db.VarChar(100)   // "Solo/a", "Familia", "Otro: Novio"
   substanceUse    String?   @map("substance_use") @db.VarChar(50)// "No", "Si - Alcohol", etc.
-
+  notes           String?   @db.Text
+  
   // ESTADO DE LA REFLEXIÓN (Para image_8ec302.png "Reflexiones pendientes")
   isReflectionCompleted Boolean @default(false) @map("is_reflection_completed")
 
