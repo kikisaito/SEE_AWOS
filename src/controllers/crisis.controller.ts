@@ -74,7 +74,7 @@ export const updateCrisis = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Usuario no autenticado" });
     }
 
-    // 1. Verificamos que la crisis exista y pertenezca al usuario
+   
     const existingCrisis = await prisma.crisisSession.findUnique({
       where: { crisisId: id }
     });
