@@ -61,3 +61,28 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error al generar el reporte" });
   }
 };
+
+
+
+export const getPendingReflections = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user?.userId;
+    
+    const pending = await prisma.crisisSession.findMany({
+      where: {
+        userId,
+        isReflectionCompleted: false // Solo las que no se han llenado
+      },
+      select: {
+        crisisId: true,
+        startedAt: true,
+        intensityLevel: true
+      },
+      orderBy: { startedAt: 'desc' }
+    });
+
+    res.json({ count: pending.length, data: pending });
+  } catch (error) {
+    res.status(500).json({ error: "Error obteniendo pendientes" });
+  }
+};

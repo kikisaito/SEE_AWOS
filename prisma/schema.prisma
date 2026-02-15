@@ -20,6 +20,7 @@ model User {
   capsules        Capsule[]
   crisisSessions  CrisisSession[]
   victories       UserVictory[]
+  customVictoryTypes VictoryTypeCatalog[]
 
   @@map("users")
 }
@@ -112,9 +113,16 @@ model EmotionCatalog {
 
 model VictoryTypeCatalog {
   victoryTypeId   Int       @id @default(autoincrement()) @map("victory_type_id")
-  name            String    @unique @db.VarChar(50)
+  name            String    @db.VarChar(50) // Quitamos @unique global porque dos usuarios pueden crear "Jugar Xbox"
+  
+  // NUEVO: Para saber si es global o privada de un usuario
+  userId          String?   @map("user_id") 
+  user            User?     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
   victories       UserVictory[]
 
+  // Constraint compuesto: El nombre es único PERO solo dentro del contexto (Global o Usuario)
+  @@unique([name, userId]) 
   @@map("victory_types_catalog")
 }
 
