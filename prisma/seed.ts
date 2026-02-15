@@ -6,8 +6,14 @@ const prisma = new PrismaClient()
 async function main() {
   console.log(' Iniciando poblado de datos (Seeding)...')
 
-  // 1. Catálogo de Emociones (MVP Simplificado)
-  const emociones = ['Miedo', 'Ira', 'Tristeza', 'Ansiedad', 'Vacío']
+  const emociones = [
+    'Miedo', 
+    'Ira', 
+    'Tristeza', 
+    'Ansiedad', 
+    'Vacío',
+    'Vergüenza'
+  ]
   
   console.log('Creating emotions...')
   for (const nombre of emociones) {
@@ -18,13 +24,14 @@ async function main() {
     })
   }
 
-  // 2. Catálogo de Tipos de Victoria
   const victorias = [
-    'Higiene',       // Bañarse, lavarse dientes
-    'Alimentación',  // Comer 3 veces
-    'No Consumo',    // Mantenerse sobrio
-    'Ejercicio',     // Mover el cuerpo
-    'Contacto Social' // Hablar con alguien
+    'Higiene personal',     
+    'Alimentación saludable',
+    'No consumo sustancias', 
+    'Ejercicio',
+    'Contacto social positivo', 
+    'Salí de casa',          
+    'Practiqué autocuidado'  
   ]
 
   console.log('Creating victory types...')
@@ -39,9 +46,9 @@ async function main() {
   // 3. Catálogo de Escala de Evaluación (Post-Crisis)
   const evaluaciones = [
     'Mejor',
-    'Un poco mejor',
+    'Un poco mejor', // En tu diseño dice "Un poco", lo estandarizamos aquí
     'Igual',
-    'Peor'
+    'Peor' // O "No" según diseño, pero "Peor" es más claro para métricas
   ]
 
   console.log('Creating evaluation scales...')
@@ -53,7 +60,7 @@ async function main() {
     })
   }
 
-  console.log('Base de datos poblada correctamente.')
+  console.log(' Base de datos poblada correctamente.')
 }
 
 main()
