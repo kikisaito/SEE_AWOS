@@ -23,12 +23,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _DashboardView(
         onNavigateToVictories: () {
           setState(() {
-            _selectedIndex = 2; // Navigate to Victories tab
+            _selectedIndex = 1; // Navigate to Victories tab (new index)
           });
         },
       ),
-      const CapsulesScreen(),
       const VictoriesScreen(),
+      const CapsulesScreen(),
     ];
 
     return Scaffold(
@@ -46,12 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb_outline),
-            label: 'Cápsulas',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.emoji_events),
             label: 'Victorias',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.lightbulb_outline),
+            label: 'Cápsulas',
           ),
         ],
       ),
