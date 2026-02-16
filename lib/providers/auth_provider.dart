@@ -63,17 +63,49 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
+
+    // Save user data for session restoration
+    if (_user != null) {
+      await prefs.setString('user_id', _user!.id);
+      await prefs.setString('user_email', _user!.email);
+      await prefs.setString('user_nombre', _user!.nombrePreferido);
+    }
   }
 
   Future<void> _clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    await prefs.remove('user_id');
+    await prefs.remove('user_email');
+    await prefs.remove('user_nombre');
   }
 
   Future<void> loadSavedUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    _isLoading = true;
+    notifyListeners();
 
-    if (token != null) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final email = prefs.getString('user_email');
+      final nombre = prefs.getString('user_nombre');
+      final id = prefs.getString('user_id');
+
+      if (token != null && email != null && nombre != null && id != null) {
+        // Restore user from saved data
+        _user = User(
+          id: id,
+          email: email,
+          nombrePreferido: nombre,
+          token: token,
+        );
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

@@ -8,22 +8,37 @@ import 'providers/crisis_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   final apiService = MockApiService();
-  runApp(MyApp(apiService: apiService));
+  final authProvider = AuthProvider(apiService);
+
+  // Load saved session before starting the app
+  await authProvider.loadSavedUser();
+
+  runApp(MyApp(
+    apiService: apiService,
+    authProvider: authProvider,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final MockApiService apiService;
+  final AuthProvider authProvider;
 
-  const MyApp({super.key, required this.apiService});
+  const MyApp({
+    super.key,
+    required this.apiService,
+    required this.authProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(apiService),
+        ChangeNotifierProvider.value(
+          value: authProvider,
         ),
         ChangeNotifierProvider(
           create: (context) {
