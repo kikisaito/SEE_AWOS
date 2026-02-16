@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../home/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -35,17 +36,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _nombreController.text.trim(),
     );
 
-    if (mounted) {
-      if (authProvider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage!),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      } else if (authProvider.isAuthenticated) {
-        Navigator.pop(context);
-      }
+    if (!mounted) return;
+
+    if (authProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage!),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } else if (authProvider.isAuthenticated) {
+      // Navigate to HomeScreen and remove RegisterScreen from stack
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../home/home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -33,12 +34,20 @@ class _LoginScreenState extends State<LoginScreen> {
       _passwordController.text,
     );
 
-    if (mounted && authProvider.errorMessage != null) {
+    if (!mounted) return;
+
+    if (authProvider.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage!),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
+      );
+    } else if (authProvider.isAuthenticated) {
+      // Navigate to HomeScreen and remove LoginScreen from stack
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     }
   }
