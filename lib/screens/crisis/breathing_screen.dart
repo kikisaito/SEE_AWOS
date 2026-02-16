@@ -85,10 +85,12 @@ class _BreathingScreenState extends State<BreathingScreen>
     super.dispose();
   }
 
-  void _navigateToEvaluation() {
+  void _navigateToEvaluation({required bool completed}) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CrisisEvaluationScreen()),
+      MaterialPageRoute(
+        builder: (_) => CrisisEvaluationScreen(breathingCompleted: completed),
+      ),
     );
   }
 
@@ -141,7 +143,7 @@ class _BreathingScreenState extends State<BreathingScreen>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _navigateToEvaluation,
+                  onPressed: () => _navigateToEvaluation(completed: true),
                   child: const Padding(
                     padding: EdgeInsets.all(4.0),
                     child: Text('Ya estoy más tranquilo'),
@@ -153,7 +155,7 @@ class _BreathingScreenState extends State<BreathingScreen>
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: _navigateToEvaluation,
+                onPressed: () => _navigateToEvaluation(completed: false),
                 child: const Text('Omitir'),
               ),
             ),

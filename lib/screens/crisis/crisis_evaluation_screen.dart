@@ -4,7 +4,9 @@ import '../../providers/crisis_provider.dart';
 import '../../providers/data_provider.dart';
 
 class CrisisEvaluationScreen extends StatelessWidget {
-  const CrisisEvaluationScreen({super.key});
+  final bool breathingCompleted;
+
+  const CrisisEvaluationScreen({super.key, this.breathingCompleted = true});
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +95,7 @@ class CrisisEvaluationScreen extends StatelessWidget {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    await crisisProvider.endCrisis(evaluation, true);
+    await crisisProvider.endCrisis(evaluation, breathingCompleted);
 
     if (!context.mounted) return;
 
