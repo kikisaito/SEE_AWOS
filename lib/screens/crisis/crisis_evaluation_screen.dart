@@ -1,0 +1,177 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/crisis_provider.dart';
+import '../../providers/data_provider.dart';
+
+class CrisisEvaluationScreen extends StatelessWidget {
+  const CrisisEvaluationScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final dataProvider = context.watch<DataProvider>();
+    final evaluations = dataProvider.evaluations;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Evaluación'),
+        automaticallyImplyLeading: false,
+      ),
+      body: evaluations.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.favorite,
+                    size: 64,
+                    color: Color(0xFFFB7185),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '¿Cómo te sientes ahora?',
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tu respuesta nos ayuda a apoyarte mejor',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 40),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: evaluations.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final evaluation = evaluations[index];
+                        return _EvaluationOption(
+                          title: evaluation.description,
+                          icon: _getEvaluationIcon(evaluation.description),
+                          color: _getEvaluationColor(evaluation.description),
+                          onTap: () => _handleEvaluationSelected(
+                            context,
+                            evaluation.description,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  IconData _getEvaluationIcon(String description) {
+    final lower = description.toLowerCase();
+    if (lower.contains('mejor')) return Icons.trending_up;
+    if (lower.contains('igual')) return Icons.horizontal_rule;
+    if (lower.contains('peor')) return Icons.trending_down;
+    return Icons.help_outline;
+  }
+
+  Color _getEvaluationColor(String description) {
+    final lower = description.toLowerCase();
+    if (lower.contains('mejor')) return const Color(0xFF22C55E);
+    if (lower.contains('igual')) return const Color(0xFF64748B);
+    if (lower.contains('peor')) return const Color(0xFFEF4444);
+    return const Color(0xFF475569);
+  }
+
+  Future<void> _handleEvaluationSelected(
+    BuildContext context,
+    String evaluation,
+  ) async {
+    final crisisProvider = context.read<CrisisProvider>();
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    await crisisProvider.endCrisis(evaluation, true);
+
+    if (!context.mounted) return;
+
+    // Hide loading
+    Navigator.pop(context);
+
+    if (crisisProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(crisisProvider.errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Crisis registrada exitosamente'),
+        backgroundColor: Color(0xFF22C55E),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // Navigate back to Home (remove all crisis screens from stack)
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+}
+
+class _EvaluationOption extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _EvaluationOption({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

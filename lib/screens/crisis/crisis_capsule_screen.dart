@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/crisis_provider.dart';
+import 'breathing_screen.dart';
+
+class CrisisCapsuleScreen extends StatelessWidget {
+  const CrisisCapsuleScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final crisisProvider = context.watch<CrisisProvider>();
+    final capsule = crisisProvider.recommendedCapsule;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cápsula para ti'),
+        automaticallyImplyLeading: false,
+      ),
+      body: capsule == null
+          ? const Center(child: Text('No hay cápsula disponible'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.lightbulb,
+                    size: 64,
+                    color: Color(0xFF5EEAD4),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    capsule.title,
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 0,
+                    color: const Color(0xFFF8FAFC),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        capsule.content,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              height: 1.6,
+                            ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BreathingScreen(),
+                          ),
+                        );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(4.0),
+                        child: Text('Continuar'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}

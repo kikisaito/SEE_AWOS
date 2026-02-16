@@ -1,0 +1,28 @@
+# Configuración de análisis estático para Flutter
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Reglas adicionales recomendadas
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_fields: true
+    unnecessary_this: true
+    
+    # Permitir uso de debugPrint
+    avoid_print: false
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"
+  
+  errors:
+    # Tratar ciertos warnings como errores
+    invalid_annotation_target: ignore
+    
+  language:
+    strict-casts: false
+    strict-inference: false
+    strict-raw-types: false

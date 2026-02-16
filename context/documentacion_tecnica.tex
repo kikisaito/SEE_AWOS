@@ -1,0 +1,483 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{fontspec}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\setmainfont{Arial}
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{dart}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\title{\textbf{AWOS - Mental Health MVP} \\ Documentación Técnica \\ Etapas 1 y 2}
+\author{Proyecto Flutter con Clean Architecture}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Resumen Ejecutivo}
+
+AWOS (A Way Out of Suffering) es una aplicación móvil MVP desarrollada en Flutter para el apoyo en salud mental. El proyecto implementa Clean Architecture con separación clara de capas, state management mediante Provider, y una arquitectura de servicios que permite alternar entre datos mock y API HTTP real.
+
+\subsection{Tecnologías Utilizadas}
+\begin{itemize}
+    \item \textbf{Framework:} Flutter 3.2+
+    \item \textbf{Lenguaje:} Dart
+    \item \textbf{State Management:} Provider 6.1.1
+    \item \textbf{HTTP Client:} http 1.1.2
+    \item \textbf{Local Storage:} shared\_preferences 2.2.2
+    \item \textbf{UI:} Google Fonts (Lato), Material Design 3
+\end{itemize}
+
+\section{Arquitectura del Proyecto}
+
+\subsection{Estructura de Carpetas}
+
+\begin{verbatim}
+lib/
+├── main.dart
+├── config/
+│   ├── theme.dart
+│   └── constants.dart
+├── models/
+│   ├── user.dart
+│   ├── emotion.dart
+│   ├── victory_type.dart
+│   ├── evaluation.dart
+│   ├── capsule.dart
+│   ├── crisis.dart
+│   └── victory.dart
+├── providers/
+│   └── auth_provider.dart
+├── services/
+│   ├── base_api_service.dart
+│   ├── mock_api_service.dart
+│   └── http_api_service.dart
+├── screens/
+│   ├── auth/
+│   │   ├── login_screen.dart
+│   │   └── register_screen.dart
+│   └── home/
+│       └── home_screen.dart
+└── widgets/
+    └── (common components)
+\end{verbatim}
+
+\subsection{Principios de Diseño}
+
+\begin{itemize}
+    \item \textbf{Clean Architecture:} Separación de capas (UI, Domain, Data)
+    \item \textbf{Dependency Injection:} Servicios inyectados via Provider
+    \item \textbf{Single Responsibility:} Cada clase tiene una responsabilidad única
+    \item \textbf{Interface Segregation:} BaseApiService define contrato abstracto
+\end{itemize}
+
+\section{Capa de Modelos (Domain Layer)}
+
+\subsection{Modelos Implementados}
+
+Todos los modelos incluyen:
+\begin{itemize}
+    \item Deserialización JSON (\texttt{fromJson})
+    \item Serialización JSON (\texttt{toJson})
+    \item Método de copia inmutable (\texttt{copyWith})
+    \item Conversión automática snake\_case $\leftrightarrow$ camelCase
+\end{itemize}
+
+\subsubsection{User}
+\begin{lstlisting}[style=dart]
+class User {
+  final String id;
+  final String email;
+  final String nombrePreferido;
+  final String token;
+}
+\end{lstlisting}
+
+Representa un usuario autenticado con token JWT.
+
+\subsubsection{Modelos de Catálogo}
+
+\begin{enumerate}
+    \item \textbf{Emotion:} Emociones disponibles (id, name)
+    \item \textbf{VictoryType:} Tipos de victorias (id, name)
+    \item \textbf{Evaluation:} Evaluaciones de progreso (id, description)
+\end{enumerate}
+
+\subsubsection{Capsule}
+\begin{lstlisting}[style=dart]
+class Capsule {
+  final String id;
+  final String title;
+  final String content;
+  final int emotionId;
+  final bool isActive;
+}
+\end{lstlisting}
+
+Contenido terapéutico asociado a emociones.
+
+\subsubsection{Crisis}
+\begin{lstlisting}[style=dart]
+class Crisis {
+  final String id;
+  final DateTime startedAt;
+  final String emotion;
+  final String evaluation;
+  final bool breathingCompleted;
+}
+\end{lstlisting}
+
+Sesión de manejo de crisis emocional.
+
+\subsubsection{Victory}
+\begin{lstlisting}[style=dart]
+class Victory {
+  final String id;
+  final String name;
+  final DateTime occurredAt;
+}
+\end{lstlisting}
+
+Registro de logros del usuario.
+
+\section{Capa de Servicios (Data Layer)}
+
+\subsection{BaseApiService}
+
+Clase abstracta que define el contrato para todas las operaciones de API:
+
+\begin{itemize}
+    \item \texttt{login(email, password) $\rightarrow$ Future<User>}
+    \item \texttt{register(email, password, nombre) $\rightarrow$ Future<User>}
+    \item \texttt{getEmotions() $\rightarrow$ Future<List<Emotion>{}>}
+    \item \texttt{getVictoryTypes() $\rightarrow$ Future<List<VictoryType>{}>}
+    \item \texttt{getEvaluations() $\rightarrow$ Future<List<Evaluation>{}>}
+    \item \texttt{getCapsules(\{emotionId\}) $\rightarrow$ Future<List<Capsule>{}>}
+    \item \texttt{getCapsuleById(id) $\rightarrow$ Future<Capsule>}
+    \item \texttt{createCrisis(emotion) $\rightarrow$ Future<Crisis>}
+    \item \texttt{updateCrisis(id, ...) $\rightarrow$ Future<Crisis>}
+    \item \texttt{getMyCrises() $\rightarrow$ Future<List<Crisis>{}>}
+    \item \texttt{createVictory(name, date) $\rightarrow$ Future<Victory>}
+    \item \texttt{getMyVictories() $\rightarrow$ Future<List<Victory>{}>}
+\end{itemize}
+
+\subsection{MockApiService}
+
+Implementación mock que simula respuestas de API:
+
+\begin{itemize}
+    \item \textbf{Delay:} 1 segundo (\texttt{Future.delayed})
+    \item \textbf{Datos:} JSON estáticos basados en API Contract
+    \item \textbf{IDs dinámicos:} Generados con timestamps
+    \item \textbf{Login/Register:} Acepta cualquier credencial
+\end{itemize}
+
+\textit{Propósito:} Permitir desarrollo frontend sin backend disponible.
+
+\subsection{HttpApiService}
+
+Estructura preparada para implementación HTTP real:
+
+\begin{itemize}
+    \item Manejo de headers (Content-Type, Authorization)
+    \item Token JWT almacenado privadamente
+    \item Métodos stub con \texttt{UnimplementedError}
+\end{itemize}
+
+\section{State Management}
+
+\subsection{AuthProvider}
+
+Provider de autenticación con \texttt{ChangeNotifier}:
+
+\subsubsection{Estado}
+\begin{itemize}
+    \item \texttt{User? user} - Usuario actual
+    \item \texttt{bool isLoading} - Estado de carga
+    \item \texttt{String? errorMessage} - Mensaje de error
+    \item \texttt{bool isAuthenticated} - Getter derivado
+\end{itemize}
+
+\subsubsection{Métodos}
+\begin{enumerate}
+    \item \texttt{login(email, password)} - Autenticación
+    \item \texttt{register(email, password, nombre)} - Registro
+    \item \texttt{logout()} - Cierre de sesión
+    \item \texttt{loadSavedUser()} - Recuperar sesión persistida
+\end{enumerate}
+
+\subsubsection{Persistencia}
+
+Utiliza \texttt{SharedPreferences} para guardar el token JWT:
+\begin{itemize}
+    \item Key: \texttt{'auth\_token'}
+    \item Guardado automático en login/register
+    \item Limpiado en logout
+\end{itemize}
+
+\section{Configuración}
+
+\subsection{Theme (AppTheme)}
+
+Paleta de colores calmantes para salud mental:
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Color} & \textbf{Hex} & \textbf{Uso} \\
+\hline
+Primary Slate & \texttt{\#475569} & Botones, AppBar \\
+Secondary Green & \texttt{\#86EFAC} & Acentos, éxito \\
+Background White & \texttt{\#FAFAFA} & Fondos \\
+Accent Teal & \texttt{\#5EEAD4} & Highlights \\
+Text Dark & \texttt{\#1E293B} & Texto principal \\
+Text Light & \texttt{\#64748B} & Texto secundario \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsubsection{Características}
+\begin{itemize}
+    \item Material Design 3
+    \item Google Fonts: Lato
+    \item Bordes redondeados: 12-16px
+    \item Elevación sutil: 2-4
+    \item Input fields con diseño limpio
+\end{itemize}
+
+\subsection{Constants}
+
+\begin{lstlisting}[style=dart]
+class AppConstants {
+  static const String appName = 'AWOS';
+  static const String apiBaseUrl = 'http://localhost:3000/api/v1';
+  static const int breathingCycleDuration = 19;
+  static const int inhaleSeconds = 4;
+  static const int holdSeconds = 7;
+  static const int exhaleSeconds = 8;
+}
+\end{lstlisting}
+
+\section{Capa de Presentación (UI Layer)}
+
+\subsection{LoginScreen}
+
+\subsubsection{Características}
+\begin{itemize}
+    \item Formulario con validación
+    \item Email: no vacío
+    \item Password: mínimo 6 caracteres
+    \item Estado de carga: \texttt{CircularProgressIndicator}
+    \item Errores: \texttt{SnackBar}
+    \item Navegación a RegisterScreen
+\end{itemize}
+
+\subsubsection{Flujo de Autenticación}
+\begin{enumerate}
+    \item Usuario ingresa credenciales
+    \item Validación de formulario
+    \item Llamada a \texttt{AuthProvider.login()}
+    \item Éxito: navegación automática a Home
+    \item Error: mostrar SnackBar
+\end{enumerate}
+
+\subsection{RegisterScreen}
+
+\subsubsection{Campos}
+\begin{itemize}
+    \item Nombre Preferido (requerido)
+    \item Email (formato válido con @)
+    \item Contraseña (mínimo 6 caracteres)
+\end{itemize}
+
+\subsubsection{Comportamiento}
+\begin{itemize}
+    \item AppBar con navegación de regreso
+    \item Auto-login después de registro exitoso
+    \item \texttt{Navigator.pop()} al completar
+\end{itemize}
+
+\subsection{HomeScreen}
+
+Pantalla placeholder con:
+\begin{itemize}
+    \item Saludo personalizado: "¡Hola, \{nombrePreferido\}!"
+    \item Mostrar email del usuario
+    \item Botón de logout en AppBar
+    \item Logout limpia sesión y regresa a login
+\end{itemize}
+
+\section{Navegación}
+
+\subsection{Navegación Condicional}
+
+Implementada con \texttt{Consumer<AuthProvider>} en \texttt{main.dart}:
+
+\begin{lstlisting}[style=dart]
+Consumer<AuthProvider>(
+  builder: (context, authProvider, child) {
+    return MaterialApp(
+      home: authProvider.isAuthenticated
+          ? const HomeScreen()
+          : const LoginScreen(),
+    );
+  },
+)
+\end{lstlisting}
+
+\subsubsection{Comportamiento}
+\begin{itemize}
+    \item \texttt{isAuthenticated == true}: Muestra HomeScreen
+    \item \texttt{isAuthenticated == false}: Muestra LoginScreen
+    \item Reactividad: escucha cambios automáticamente
+\end{itemize}
+
+\section{Flujos de Usuario Implementados}
+
+\subsection{Flujo de Login}
+\begin{enumerate}
+    \item App inicia $\rightarrow$ LoginScreen
+    \item Usuario ingresa credenciales
+    \item MockApiService simula 1s de latencia
+    \item Token guardado en SharedPreferences
+    \item Estado actualizado: \texttt{isAuthenticated = true}
+    \item Navegación automática a HomeScreen
+\end{enumerate}
+
+\subsection{Flujo de Registro}
+\begin{enumerate}
+    \item Desde LoginScreen $\rightarrow$ RegisterScreen
+    \item Usuario ingresa nombre, email, password
+    \item Validación de formulario
+    \item MockApiService crea usuario con ID único
+    \item Auto-login automático
+    \item Token guardado
+    \item Navegación a HomeScreen
+\end{enumerate}
+
+\subsection{Flujo de Logout}
+\begin{enumerate}
+    \item Usuario presiona botón de logout
+    \item \texttt{AuthProvider.logout()} limpia estado
+    \item Token eliminado de SharedPreferences
+    \item Estado actualizado: \texttt{isAuthenticated = false}
+    \item Navegación automática a LoginScreen
+\end{enumerate}
+
+\section{Dependencias del Proyecto}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Paquete} & \textbf{Versión} & \textbf{Propósito} \\
+\hline
+provider & 6.1.1 & State management \\
+http & 1.1.2 & Cliente HTTP \\
+shared\_preferences & 2.2.2 & Almacenamiento local \\
+intl & 0.18.1 & Internacionalización \\
+google\_fonts & 6.1.0 & Tipografía \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Validaciones Implementadas}
+
+\subsection{LoginScreen}
+\begin{itemize}
+    \item Email no vacío
+    \item Contraseña mínimo 6 caracteres
+\end{itemize}
+
+\subsection{RegisterScreen}
+\begin{itemize}
+    \item Nombre preferido no vacío
+    \item Email contiene @
+    \item Contraseña mínimo 6 caracteres
+\end{itemize}
+
+\section{Manejo de Estados}
+
+\subsection{Estados de Carga}
+\begin{itemize}
+    \item \texttt{isLoading == true}: Muestra \texttt{CircularProgressIndicator}
+    \item \texttt{isLoading == false}: Muestra botón de acción
+\end{itemize}
+
+\subsection{Manejo de Errores}
+\begin{itemize}
+    \item Errores capturados en try-catch
+    \item Almacenados en \texttt{AuthProvider.errorMessage}
+    \item Mostrados via \texttt{SnackBar} con color error
+    \item Auto-limpiado en próximo intento
+\end{itemize}
+
+\section{Próximos Pasos (Etapas Futuras)}
+
+\subsection{Etapa 3: Gestión de Crisis}
+\begin{itemize}
+    \item Pantalla para registrar crisis
+    \item Ejercicio de respiración 4-7-8
+    \item Asociación con emociones
+    \item Evaluación post-crisis
+\end{itemize}
+
+\subsection{Etapa 4: Cápsulas de Contenido}
+\begin{itemize}
+    \item Listado de cápsulas
+    \item Filtrado por emoción
+    \item Vista de detalle
+\end{itemize}
+
+\subsection{Etapa 5: Registro de Victorias}
+\begin{itemize}
+    \item Crear victorias
+    \item Historial de logros
+    \item Visualización temporal
+\end{itemize}
+
+\section{Conclusiones}
+
+El proyecto AWOS ha completado exitosamente las Etapas 1 y 2, estableciendo una base sólida con:
+
+\begin{itemize}
+    \item \textbf{Arquitectura escalable:} Clean Architecture permite fácil mantenimiento
+    \item \textbf{Separación de capas:} UI, Domain, Data claramente definidas
+    \item \textbf{Flexibilidad:} Cambio entre Mock y HTTP API sin modificar UI
+    \item \textbf{State Management robusto:} Provider maneja estado reactivo
+    \item \textbf{UX profesional:} Validaciones, loading states, error handling
+    \item \textbf{Diseño terapéutico:} Colores calmantes, tipografía legible
+\end{itemize}
+
+La aplicación está lista para continuar con features de valor (crisis, cápsulas, victorias).
+
+\end{document}

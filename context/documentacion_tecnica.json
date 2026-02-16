@@ -1,0 +1,524 @@
+{
+    "proyecto": {
+        "nombre": "AWOS",
+        "nombreCompleto": "A Way Out of Suffering",
+        "descripcion": "Aplicación móvil MVP para apoyo en salud mental",
+        "framework": "Flutter",
+        "version": "1.0.0",
+        "arquitectura": "Clean Architecture"
+    },
+    "tecnologias": {
+        "framework": "Flutter 3.2+",
+        "lenguaje": "Dart",
+        "stateManagement": "Provider 6.1.1",
+        "httpClient": "http 1.1.2",
+        "localStorage": "shared_preferences 2.2.2",
+        "ui": {
+            "designSystem": "Material Design 3",
+            "fonts": "Google Fonts - Lato"
+        }
+    },
+    "estructura": {
+        "lib": {
+            "main.dart": {
+                "descripcion": "Punto de entrada de la aplicación",
+                "componentes": [
+                    "MultiProvider setup",
+                    "Consumer<AuthProvider> para navegación condicional",
+                    "MaterialApp configuration"
+                ]
+            },
+            "config": {
+                "theme.dart": {
+                    "descripcion": "Configuración del tema visual",
+                    "paleta": {
+                        "primarySlate": "#475569",
+                        "secondaryGreen": "#86EFAC",
+                        "backgroundWhite": "#FAFAFA",
+                        "accentTeal": "#5EEAD4",
+                        "textDark": "#1E293B",
+                        "textLight": "#64748B",
+                        "errorRed": "#EF4444",
+                        "successGreen": "#22C55E"
+                    },
+                    "caracteristicas": [
+                        "Material Design 3",
+                        "Google Fonts Lato",
+                        "Bordes redondeados 12-16px",
+                        "Elevación sutil"
+                    ]
+                },
+                "constants.dart": {
+                    "descripcion": "Constantes de aplicación",
+                    "valores": {
+                        "appName": "AWOS",
+                        "apiBaseUrl": "http://localhost:3000/api/v1",
+                        "breathingCycleDuration": 19,
+                        "inhaleSeconds": 4,
+                        "holdSeconds": 7,
+                        "exhaleSeconds": 8
+                    }
+                }
+            },
+            "models": {
+                "descripcion": "Capa de dominio - Modelos de datos",
+                "caracteristicasComunes": [
+                    "fromJson() - Deserialización JSON",
+                    "toJson() - Serialización JSON",
+                    "copyWith() - Copias inmutables",
+                    "Conversión snake_case <-> camelCase"
+                ],
+                "modelos": {
+                    "User": {
+                        "archivo": "user.dart",
+                        "campos": {
+                            "id": "String",
+                            "email": "String",
+                            "nombrePreferido": "String",
+                            "token": "String"
+                        },
+                        "proposito": "Usuario autenticado con token JWT"
+                    },
+                    "Emotion": {
+                        "archivo": "emotion.dart",
+                        "campos": {
+                            "id": "int",
+                            "name": "String"
+                        },
+                        "proposito": "Catálogo de emociones"
+                    },
+                    "VictoryType": {
+                        "archivo": "victory_type.dart",
+                        "campos": {
+                            "id": "int",
+                            "name": "String"
+                        },
+                        "proposito": "Catálogo de tipos de victorias"
+                    },
+                    "Evaluation": {
+                        "archivo": "evaluation.dart",
+                        "campos": {
+                            "id": "int",
+                            "description": "String"
+                        },
+                        "proposito": "Catálogo de evaluaciones"
+                    },
+                    "Capsule": {
+                        "archivo": "capsule.dart",
+                        "campos": {
+                            "id": "String",
+                            "title": "String",
+                            "content": "String",
+                            "emotionId": "int",
+                            "isActive": "bool"
+                        },
+                        "proposito": "Contenido terapéutico asociado a emociones"
+                    },
+                    "Crisis": {
+                        "archivo": "crisis.dart",
+                        "campos": {
+                            "id": "String",
+                            "startedAt": "DateTime",
+                            "emotion": "String",
+                            "evaluation": "String",
+                            "breathingCompleted": "bool"
+                        },
+                        "proposito": "Sesión de manejo de crisis emocional"
+                    },
+                    "Victory": {
+                        "archivo": "victory.dart",
+                        "campos": {
+                            "id": "String",
+                            "name": "String",
+                            "occurredAt": "DateTime"
+                        },
+                        "proposito": "Registro de logros del usuario"
+                    }
+                }
+            },
+            "services": {
+                "descripcion": "Capa de datos - Servicios de API",
+                "BaseApiService": {
+                    "archivo": "base_api_service.dart",
+                    "tipo": "abstract class",
+                    "proposito": "Contrato abstracto para operaciones API",
+                    "metodos": [
+                        "login(email, password) -> Future<User>",
+                        "register(email, password, nombrePreferido) -> Future<User>",
+                        "getEmotions() -> Future<List<Emotion>>",
+                        "getVictoryTypes() -> Future<List<VictoryType>>",
+                        "getEvaluations() -> Future<List<Evaluation>>",
+                        "getCapsules({emotionId}) -> Future<List<Capsule>>",
+                        "getCapsuleById(id) -> Future<Capsule>",
+                        "createCrisis(emotion) -> Future<Crisis>",
+                        "updateCrisis(id, ...) -> Future<Crisis>",
+                        "getMyCrises() -> Future<List<Crisis>>",
+                        "createVictory(name, date) -> Future<Victory>",
+                        "getMyVictories() -> Future<List<Victory>>"
+                    ]
+                },
+                "MockApiService": {
+                    "archivo": "mock_api_service.dart",
+                    "tipo": "class implements BaseApiService",
+                    "proposito": "Implementación mock para desarrollo sin backend",
+                    "caracteristicas": [
+                        "Delay de 1 segundo (Future.delayed)",
+                        "Datos JSON estáticos basados en API Contract",
+                        "IDs dinámicos generados con timestamps",
+                        "Login/Register acepta cualquier credencial",
+                        "Filtrado funcional (ej: capsules por emotionId)"
+                    ]
+                },
+                "HttpApiService": {
+                    "archivo": "http_api_service.dart",
+                    "tipo": "class implements BaseApiService",
+                    "proposito": "Estructura preparada para HTTP real",
+                    "estado": "Pendiente implementación",
+                    "caracteristicas": [
+                        "Manejo de headers (Content-Type, Authorization)",
+                        "Token JWT privado",
+                        "Todos los métodos lanzan UnimplementedError"
+                    ]
+                }
+            },
+            "providers": {
+                "descripcion": "State Management con ChangeNotifier",
+                "AuthProvider": {
+                    "archivo": "auth_provider.dart",
+                    "extiende": "ChangeNotifier",
+                    "estado": {
+                        "user": "User?",
+                        "isLoading": "bool",
+                        "errorMessage": "String?",
+                        "isAuthenticated": "bool (getter)"
+                    },
+                    "metodos": {
+                        "login": {
+                            "parametros": [
+                                "email",
+                                "password"
+                            ],
+                            "descripcion": "Autenticación de usuario",
+                            "flujo": [
+                                "Actualiza isLoading = true",
+                                "Llama apiService.login()",
+                                "Guarda token en SharedPreferences",
+                                "Actualiza user y notifyListeners()"
+                            ]
+                        },
+                        "register": {
+                            "parametros": [
+                                "email",
+                                "password",
+                                "nombrePreferido"
+                            ],
+                            "descripcion": "Registro de nuevo usuario",
+                            "flujo": [
+                                "Similar a login",
+                                "Llama apiService.register()",
+                                "Auto-login automático"
+                            ]
+                        },
+                        "logout": {
+                            "parametros": [],
+                            "descripcion": "Cierre de sesión",
+                            "flujo": [
+                                "Limpia user = null",
+                                "Elimina token de SharedPreferences",
+                                "notifyListeners()"
+                            ]
+                        },
+                        "loadSavedUser": {
+                            "parametros": [],
+                            "descripcion": "Recuperar sesión persistida",
+                            "estado": "Stub (para implementar)"
+                        }
+                    },
+                    "persistencia": {
+                        "storage": "SharedPreferences",
+                        "key": "auth_token",
+                        "operaciones": [
+                            "Guardado automático en login/register",
+                            "Limpiado en logout"
+                        ]
+                    }
+                }
+            },
+            "screens": {
+                "descripcion": "Capa de presentación - Pantallas UI",
+                "auth": {
+                    "LoginScreen": {
+                        "archivo": "login_screen.dart",
+                        "tipo": "StatefulWidget",
+                        "caracteristicas": [
+                            "Formulario con validación",
+                            "Email: no vacío",
+                            "Password: mínimo 6 caracteres",
+                            "Estado de carga: CircularProgressIndicator",
+                            "Errores: SnackBar",
+                            "Navegación a RegisterScreen"
+                        ],
+                        "flujo": [
+                            "Usuario ingresa credenciales",
+                            "Validación de formulario",
+                            "Llamada a AuthProvider.login()",
+                            "Éxito: navegación automática a Home",
+                            "Error: mostrar SnackBar"
+                        ],
+                        "componentes": [
+                            "TextFormField para email",
+                            "TextFormField para password (obscureText)",
+                            "Consumer<AuthProvider> para botón",
+                            "TextButton para registro"
+                        ]
+                    },
+                    "RegisterScreen": {
+                        "archivo": "register_screen.dart",
+                        "tipo": "StatefulWidget",
+                        "campos": [
+                            "Nombre Preferido (requerido)",
+                            "Email (formato válido con @)",
+                            "Contraseña (mínimo 6 caracteres)"
+                        ],
+                        "caracteristicas": [
+                            "AppBar con navegación de regreso",
+                            "Auto-login después de registro exitoso",
+                            "Navigator.pop() al completar",
+                            "Validaciones en tiempo real"
+                        ],
+                        "flujo": [
+                            "Usuario ingresa datos",
+                            "Validación de formulario",
+                            "Llamada a AuthProvider.register()",
+                            "Éxito: pop y navegación automática",
+                            "Error: SnackBar"
+                        ]
+                    }
+                },
+                "home": {
+                    "HomeScreen": {
+                        "archivo": "home_screen.dart",
+                        "tipo": "StatelessWidget",
+                        "proposito": "Pantalla placeholder post-autenticación",
+                        "caracteristicas": [
+                            "Saludo personalizado: '¡Hola, {nombrePreferido}!'",
+                            "Muestra email del usuario",
+                            "Botón de logout en AppBar",
+                            "Logout limpia sesión y regresa a login"
+                        ],
+                        "componentes": [
+                            "AppBar con actions",
+                            "Consumer para acceder a user",
+                            "Icono y texto centrados"
+                        ]
+                    }
+                }
+            },
+            "widgets": {
+                "descripcion": "Componentes reutilizables",
+                "estado": "Pendiente - carpeta preparada para futuros widgets comunes"
+            }
+        }
+    },
+    "navegacion": {
+        "tipo": "Condicional basada en estado",
+        "implementacion": {
+            "archivo": "main.dart",
+            "patron": "Consumer<AuthProvider>",
+            "logica": {
+                "isAuthenticated_true": "HomeScreen",
+                "isAuthenticated_false": "LoginScreen"
+            },
+            "caracteristicas": [
+                "Reactividad automática",
+                "Sin navegación manual necesaria",
+                "Estado global compartido"
+            ]
+        }
+    },
+    "flujos": {
+        "login": {
+            "pasos": [
+                "App inicia -> LoginScreen",
+                "Usuario ingresa credenciales",
+                "MockApiService simula 1s de latencia",
+                "Token guardado en SharedPreferences",
+                "Estado actualizado: isAuthenticated = true",
+                "Navegación automática a HomeScreen"
+            ],
+            "validaciones": [
+                "Email no vacío",
+                "Password >= 6 caracteres"
+            ]
+        },
+        "registro": {
+            "pasos": [
+                "Desde LoginScreen -> RegisterScreen",
+                "Usuario ingresa nombre, email, password",
+                "Validación de formulario",
+                "MockApiService crea usuario con ID único",
+                "Auto-login automático",
+                "Token guardado",
+                "Navegación a HomeScreen"
+            ],
+            "validaciones": [
+                "Nombre no vacío",
+                "Email contiene @",
+                "Password >= 6 caracteres"
+            ]
+        },
+        "logout": {
+            "pasos": [
+                "Usuario presiona botón de logout",
+                "AuthProvider.logout() limpia estado",
+                "Token eliminado de SharedPreferences",
+                "Estado actualizado: isAuthenticated = false",
+                "Navegación automática a LoginScreen"
+            ]
+        }
+    },
+    "manejoDeEstados": {
+        "loading": {
+            "condicion": "isLoading == true",
+            "ui": "CircularProgressIndicator",
+            "ubicacion": "Reemplaza botón de acción"
+        },
+        "error": {
+            "almacenamiento": "AuthProvider.errorMessage",
+            "visualizacion": "SnackBar con color error",
+            "limpieza": "Automática en próximo intento"
+        },
+        "autenticacion": {
+            "verificacion": "isAuthenticated getter",
+            "persistencia": "SharedPreferences",
+            "reactividad": "notifyListeners()"
+        }
+    },
+    "validaciones": {
+        "LoginScreen": {
+            "email": "No vacío",
+            "password": "Mínimo 6 caracteres"
+        },
+        "RegisterScreen": {
+            "nombrePreferido": "No vacío",
+            "email": "Contiene @",
+            "password": "Mínimo 6 caracteres"
+        }
+    },
+    "dependencias": {
+        "provider": {
+            "version": "6.1.1",
+            "proposito": "State management"
+        },
+        "http": {
+            "version": "1.1.2",
+            "proposito": "Cliente HTTP (preparado para uso futuro)"
+        },
+        "shared_preferences": {
+            "version": "2.2.2",
+            "proposito": "Almacenamiento local de token"
+        },
+        "intl": {
+            "version": "0.18.1",
+            "proposito": "Internacionalización"
+        },
+        "google_fonts": {
+            "version": "6.1.0",
+            "proposito": "Tipografía (Lato)"
+        }
+    },
+    "principiosDeDiseno": {
+        "arquitectura": [
+            "Clean Architecture",
+            "Separación de capas (UI, Domain, Data)",
+            "Dependency Injection via Provider"
+        ],
+        "solid": [
+            "Single Responsibility",
+            "Interface Segregation (BaseApiService)",
+            "Dependency Inversion (Provider injection)"
+        ],
+        "patrones": [
+            "Repository Pattern (Services)",
+            "Provider Pattern (State Management)",
+            "Observer Pattern (ChangeNotifier)"
+        ]
+    },
+    "etapasCompletadas": {
+        "etapa1": {
+            "nombre": "Cimientos, Modelos y Servicio Mock",
+            "completado": true,
+            "entregables": [
+                "Estructura de carpetas",
+                "7 modelos de datos con JSON serialization",
+                "BaseApiService (contrato abstracto)",
+                "MockApiService (implementación completa)",
+                "HttpApiService (estructura)",
+                "AuthProvider básico",
+                "Theme configuration",
+                "Constants configuration"
+            ]
+        },
+        "etapa2": {
+            "nombre": "Autenticación (Login & Register)",
+            "completado": true,
+            "entregables": [
+                "LoginScreen con validaciones",
+                "RegisterScreen con validaciones",
+                "HomeScreen placeholder",
+                "Navegación condicional (Consumer)",
+                "Estados de carga",
+                "Manejo de errores (SnackBar)",
+                "Persistencia de token",
+                "Logout funcional"
+            ]
+        }
+    },
+    "proximasetapas": {
+        "etapa3": {
+            "nombre": "Gestión de Crisis",
+            "features": [
+                "Pantalla para registrar crisis",
+                "Ejercicio de respiración 4-7-8",
+                "Asociación con emociones",
+                "Evaluación post-crisis"
+            ]
+        },
+        "etapa4": {
+            "nombre": "Cápsulas de Contenido",
+            "features": [
+                "Listado de cápsulas",
+                "Filtrado por emoción",
+                "Vista de detalle"
+            ]
+        },
+        "etapa5": {
+            "nombre": "Registro de Victorias",
+            "features": [
+                "Crear victorias",
+                "Historial de logros",
+                "Visualización temporal"
+            ]
+        }
+    },
+    "conclusiones": {
+        "logros": [
+            "Arquitectura escalable con Clean Architecture",
+            "Separación clara de capas (UI, Domain, Data)",
+            "Flexibilidad para cambiar entre Mock y HTTP API",
+            "State Management robusto con Provider",
+            "UX profesional con validaciones y error handling",
+            "Diseño terapéutico con colores calmantes"
+        ],
+        "estado": "Listo para continuar con features de valor (crisis, cápsulas, victorias)"
+    },
+    "metadata": {
+        "fechaCreacion": "2026-02-13",
+        "version": "1.0",
+        "autor": "Proyecto AWOS",
+        "etapasDocumentadas": [
+            "Etapa 1",
+            "Etapa 2"
+        ]
+    }
+}
