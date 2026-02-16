@@ -141,12 +141,58 @@ class _DashboardViewState extends State<_DashboardView> {
               ],
             ),
             const SizedBox(height: 40),
-            Text(
-              'Resumen',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 16),
-            if (dataProvider.dashboardData != null) ...[
+
+            // Error handling with retry button
+            if (dataProvider.errorMessage != null) ...[
+              Card(
+                color: Colors.red.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: Colors.red, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Error al cargar dashboard',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.red.shade900,
+                                ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        dataProvider.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          context.read<DataProvider>().loadDashboard();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+
+            // Dashboard summary cards
+            if (dataProvider.dashboardData != null &&
+                dataProvider.errorMessage == null) ...[
+              Text(
+                'Resumen',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 16),
               _SummaryCard(
                 icon: Icons.emoji_events,
                 title: 'Victorias esta semana',
