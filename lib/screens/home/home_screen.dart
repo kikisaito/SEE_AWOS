@@ -16,16 +16,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const _DashboardView(),
-    const CapsulesScreen(),
-    const VictoriesScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // Build screens list in build method to access setState
+    final screens = [
+      _DashboardView(
+        onNavigateToVictories: () {
+          setState(() {
+            _selectedIndex = 2; // Navigate to Victories tab
+          });
+        },
+      ),
+      const CapsulesScreen(),
+      const VictoriesScreen(),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -53,7 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _DashboardView extends StatefulWidget {
-  const _DashboardView();
+  final VoidCallback onNavigateToVictories;
+
+  const _DashboardView({required this.onNavigateToVictories});
 
   @override
   State<_DashboardView> createState() => _DashboardViewState();
@@ -110,9 +119,7 @@ class _DashboardViewState extends State<_DashboardView> {
                     emoji: '😊',
                     label: 'BIEN',
                     color: const Color(0xFF86EFAC),
-                    onTap: () {
-                      debugPrint('Usuario se siente BIEN');
-                    },
+                    onTap: widget.onNavigateToVictories,
                   ),
                 ),
                 const SizedBox(width: 16),
