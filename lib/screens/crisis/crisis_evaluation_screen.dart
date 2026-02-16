@@ -15,7 +15,17 @@ class CrisisEvaluationScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Evaluación'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Evaluación'),
+            Text(
+              'Paso 4 de 4',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
       ),
       body: evaluations.isEmpty

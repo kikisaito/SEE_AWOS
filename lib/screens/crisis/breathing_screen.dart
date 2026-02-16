@@ -98,7 +98,17 @@ class _BreathingScreenState extends State<BreathingScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Respiración Guiada'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Respiración Guiada'),
+            Text(
+              'Paso 3 de 4',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

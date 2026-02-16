@@ -13,7 +13,17 @@ class CrisisCapsuleScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cápsula para ti'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Cápsula para ti'),
+            Text(
+              'Paso 2 de 4',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
       ),
       body: capsule == null
