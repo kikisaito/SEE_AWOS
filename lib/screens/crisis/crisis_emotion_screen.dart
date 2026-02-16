@@ -101,12 +101,12 @@ class CrisisEmotionScreen extends StatelessWidget {
 
     // Navigate based on whether there's a recommended capsule
     if (crisisProvider.recommendedCapsule != null) {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const CrisisCapsuleScreen()),
       );
     } else {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const BreathingScreen()),
       );

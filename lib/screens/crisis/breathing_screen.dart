@@ -86,7 +86,7 @@ class _BreathingScreenState extends State<BreathingScreen>
   }
 
   void _navigateToEvaluation() {
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CrisisEvaluationScreen()),
     );
