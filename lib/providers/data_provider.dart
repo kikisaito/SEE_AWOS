@@ -55,11 +55,17 @@ class DataProvider extends ChangeNotifier {
   }
 
   Future<void> loadDashboard() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       _dashboardData = await _apiService.getDashboard();
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
       _errorMessage = e.toString();
+      _isLoading = false;
       notifyListeners();
     }
   }
