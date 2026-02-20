@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../services/mock_api_service.dart';
+import 'package:provider/provider.dart';
+import '../../models/emotion.dart';
+import '../../providers/data_provider.dart';
 import '../../models/capsule.dart';
+import '../../services/mock_api_service.dart';
 import 'create_capsule_screen.dart';
 
 class CapsulesScreen extends StatefulWidget {
@@ -11,7 +14,6 @@ class CapsulesScreen extends StatefulWidget {
 }
 
 class _CapsulesScreenState extends State<CapsulesScreen> {
-  final MockApiService _apiService = MockApiService();
   List<Capsule> _capsules = [];
   bool _isLoading = false;
 
@@ -25,7 +27,7 @@ class _CapsulesScreenState extends State<CapsulesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final capsules = await _apiService.getCapsules();
+      final capsules = await MockApiService().getCapsules();
       setState(() {
         _capsules = capsules;
       });
@@ -97,7 +99,8 @@ class _CapsulesScreenState extends State<CapsulesScreen> {
                       const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final capsule = _capsules[index];
-                    return _CapsuleCard(capsule: capsule);
+                    final emotions = context.read<DataProvider>().emotions;
+                    return _CapsuleCard(capsule: capsule, emotions: emotions);
                   },
                 ),
     );
@@ -106,8 +109,9 @@ class _CapsulesScreenState extends State<CapsulesScreen> {
 
 class _CapsuleCard extends StatefulWidget {
   final Capsule capsule;
+  final List<Emotion> emotions;
 
-  const _CapsuleCard({required this.capsule});
+  const _CapsuleCard({required this.capsule, required this.emotions});
 
   @override
   State<_CapsuleCard> createState() => _CapsuleCardState();
@@ -168,7 +172,13 @@ class _CapsuleCardState extends State<_CapsuleCard> {
             ),
             const SizedBox(height: 12),
             Chip(
-              label: Text('Emoción ID: ${widget.capsule.emotionId}'),
+              label: Text(
+                widget.emotions
+                        .where((e) => e.id == widget.capsule.emotionId)
+                        .map((e) => e.name)
+                        .firstOrNull ??
+                    'Emoción ${widget.capsule.emotionId}',
+              ),
               backgroundColor: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
               labelStyle: const TextStyle(
                 color: Color(0xFF475569),
