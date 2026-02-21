@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/crisis.dart';
 import '../models/capsule.dart';
 import '../services/base_api_service.dart';
+import '../services/local_database_service.dart';
 
 class CrisisProvider extends ChangeNotifier {
   final BaseApiService _apiService;
@@ -51,15 +52,61 @@ class CrisisProvider extends ChangeNotifier {
         breathingCompleted: breathingCompleted,
       );
 
-      _currentCrisis = null;
-      _recommendedCapsule = null;
+      await LocalDatabaseService.insertCrisis({
+        'id': _currentCrisis!.id,
+        'started_at': _currentCrisis!.startedAt.toIso8601String(),
+        'emotion': _currentCrisis!.emotion,
+        'evaluation': evaluation,
+        'breathing_completed': breathingCompleted ? 1 : 0,
+        'is_synced': 1,
+        'reflection_pending': 1,
+      });
+
+      _currentCrisis = _currentCrisis!.copyWith(evaluation: evaluation);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _errorMessage = e.toString();
+      await LocalDatabaseService.insertCrisis({
+        'id': _currentCrisis!.id,
+        'started_at': _currentCrisis!.startedAt.toIso8601String(),
+        'emotion': _currentCrisis!.emotion,
+        'evaluation': evaluation,
+        'breathing_completed': breathingCompleted ? 1 : 0,
+        'is_synced': 0,
+        'reflection_pending': 1,
+      });
+
+      _currentCrisis = _currentCrisis!.copyWith(evaluation: evaluation);
+      _errorMessage = null;
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> saveReflection({
+    required String crisisId,
+    required String trigger,
+    required String location,
+    required String company,
+    required String substance,
+  }) async {
+    await LocalDatabaseService.updateCrisisReflection(
+      crisisId,
+      trigger: trigger,
+      location: location,
+      company: company,
+      substance: substance,
+    );
+
+    _currentCrisis = null;
+    _recommendedCapsule = null;
+    notifyListeners();
+  }
+
+  Future<void> skipReflection(String crisisId) async {
+    _currentCrisis = null;
+    _recommendedCapsule = null;
+    notifyListeners();
   }
 
   void clearCrisis() {

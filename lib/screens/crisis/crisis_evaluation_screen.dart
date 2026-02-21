@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/crisis_provider.dart';
 import '../../providers/data_provider.dart';
+import 'post_crisis_reflection_screen.dart';
 
 class CrisisEvaluationScreen extends StatelessWidget {
   final bool breathingCompleted;
@@ -122,17 +123,16 @@ class CrisisEvaluationScreen extends StatelessWidget {
       return;
     }
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Crisis registrada exitosamente'),
-        backgroundColor: Color(0xFF22C55E),
-        duration: Duration(seconds: 2),
+    // Navigate to reflection screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PostCrisisReflectionScreen(
+          crisisId: crisisProvider.currentCrisis?.id ?? '',
+          evaluation: evaluation,
+        ),
       ),
     );
-
-    // Navigate back to Home (remove all crisis screens from stack)
-    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 }
 
