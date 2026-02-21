@@ -16,7 +16,7 @@ class MockApiService implements BaseApiService {
     final userJson = {
       "id": "uuid-user-123",
       "email": email,
-      "nombrePreferido": "Tony",
+      "nombrePreferido": "Usuario",
       "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock.token",
     };
 

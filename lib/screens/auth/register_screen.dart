@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nombreController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -131,18 +132,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Contraseña',
-                      hintText: 'Mínimo 6 caracteres',
-                      prefixIcon: Icon(Icons.lock_outlined),
+                      hintText: 'Mínimo 8 caracteres',
+                      prefixIcon: const Icon(Icons.lock_outlined),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'La contraseña es requerida';
                       }
-                      if (value.length < 6) {
-                        return 'La contraseña debe tener al menos 6 caracteres';
+                      if (value.length < 8) {
+                        return 'Mínimo 8 caracteres';
+                      }
+                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                        return 'Debe contener al menos una mayúscula';
+                      }
+                      if (!RegExp(r'[a-z]').hasMatch(value)) {
+                        return 'Debe contener al menos una minúscula';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(value)) {
+                        return 'Debe contener al menos un número';
+                      }
+                      if (!RegExp(r'[^a-zA-Z0-9]').hasMatch(value)) {
+                        return 'Debe contener al menos un carácter especial';
                       }
                       return null;
                     },
