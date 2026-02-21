@@ -282,4 +282,34 @@ class LocalDatabaseService {
       LIMIT 50
     ''');
   }
+
+  // --- Dashboard metrics ---
+
+  static Future<int> countActiveCapsules() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM capsules WHERE is_active = 1',
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  static Future<int> countWeeklyVictories() async {
+    final db = await database;
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    final weekAgoStr = weekAgo.toIso8601String().substring(0, 10);
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM victory_logs WHERE logged_date >= ?',
+      [weekAgoStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  static Future<int> countTotalCrises() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM crisis',
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 }

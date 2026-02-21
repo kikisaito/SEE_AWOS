@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/data_provider.dart';
+import '../../services/local_database_service.dart';
 import '../../widgets/app_drawer.dart';
 import '../capsules/capsules_screen.dart';
 import '../victories/victories_screen.dart';
@@ -19,12 +19,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Build screens list in build method to access setState
     final screens = [
       _DashboardView(
         onNavigateToVictories: () {
           setState(() {
-            _selectedIndex = 1; // Navigate to Victories tab (new index)
+            _selectedIndex = 1;
           });
         },
       ),
@@ -70,18 +69,28 @@ class _DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<_DashboardView> {
+  late Future<Map<String, int>> _metricsFuture;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DataProvider>().loadDashboard();
-    });
+    _metricsFuture = _loadMetrics();
+  }
+
+  Future<Map<String, int>> _loadMetrics() async {
+    final capsules = await LocalDatabaseService.countActiveCapsules();
+    final victories = await LocalDatabaseService.countWeeklyVictories();
+    final crises = await LocalDatabaseService.countTotalCrises();
+    return {
+      'capsules': capsules,
+      'victories': victories,
+      'crises': crises,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final dataProvider = context.watch<DataProvider>();
     final user = authProvider.user;
 
     return Scaffold(
@@ -136,87 +145,40 @@ class _DashboardViewState extends State<_DashboardView> {
               ],
             ),
             const SizedBox(height: 40),
+            Text(
+              'Resumen',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<Map<String, int>>(
+              future: _metricsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            // Error handling with retry button
-            if (dataProvider.errorMessage != null) ...[
-              Card(
-                color: Colors.red.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: Colors.red, size: 48),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Error al cargar dashboard',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.red.shade900,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        dataProvider.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          context.read<DataProvider>().loadDashboard();
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reintentar'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
+                final data = snapshot.data ??
+                    {'capsules': 0, 'victories': 0, 'crises': 0};
 
-            // Dashboard summary cards
-            if (dataProvider.dashboardData != null &&
-                dataProvider.errorMessage == null) ...[
-              Text(
-                'Resumen',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 16),
-              _SummaryCard(
-                icon: Icons.emoji_events,
-                title: 'Victorias esta semana',
-                value: '${dataProvider.dashboardData!.weeklyVictoriesCount}',
-                color: const Color(0xFF5EEAD4),
-              ),
-              const SizedBox(height: 12),
-              if (dataProvider.dashboardData!.lastCrisis != null)
-                _SummaryCard(
-                  icon: Icons.favorite,
-                  title: 'Última crisis',
-                  value: dataProvider.dashboardData!.lastCrisis!.emotion,
-                  subtitle: dataProvider.dashboardData!.lastCrisis!.evaluation,
-                  color: const Color(0xFF86EFAC),
-                ),
-            ] else if (dataProvider.isLoading) ...[
-              const Center(child: CircularProgressIndicator()),
-            ] else if (dataProvider.errorMessage != null) ...[
-              Card(
-                color: Colors.red[50],
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Error: ${dataProvider.errorMessage}',
-                    style: TextStyle(color: Colors.red[900]),
-                  ),
-                ),
-              ),
-            ],
+                return Column(
+                  children: [
+                    _SummaryCard(
+                      icon: Icons.emoji_events,
+                      title: 'Victorias esta semana',
+                      value: '${data['victories']}',
+                      color: const Color(0xFF5EEAD4),
+                    ),
+                    const SizedBox(height: 12),
+                    _SummaryCard(
+                      icon: Icons.lightbulb_outline,
+                      title: 'Cápsulas activas',
+                      value: '${data['capsules']}',
+                      color: const Color(0xFFFB923C),
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -275,14 +237,12 @@ class _SummaryCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
-  final String? subtitle;
   final Color color;
 
   const _SummaryCard({
     required this.icon,
     required this.title,
     required this.value,
-    this.subtitle,
     required this.color,
   });
 
@@ -316,13 +276,6 @@ class _SummaryCard extends StatelessWidget {
                     value,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
                 ],
               ),
             ),
