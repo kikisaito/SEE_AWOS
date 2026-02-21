@@ -4,6 +4,7 @@ import '../../models/emotion.dart';
 import '../../providers/data_provider.dart';
 import '../../models/capsule.dart';
 import '../../services/mock_api_service.dart';
+import 'capsule_detail_screen.dart';
 import 'create_capsule_screen.dart';
 
 class CapsulesScreen extends StatefulWidget {
@@ -128,64 +129,99 @@ class _CapsuleCardState extends State<_CapsuleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final emotionName = widget.emotions
+            .where((e) => e.id == widget.capsule.emotionId)
+            .map((e) => e.name)
+            .firstOrNull ??
+        'Emoción ${widget.capsule.emotionId}';
+
     return Card(
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.capsule.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CapsuleDetailScreen(
+                capsule: widget.capsule,
+                emotionName: emotionName,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    widget.capsule.type == 'audio'
+                        ? Icons.mic
+                        : Icons.text_fields,
+                    size: 18,
+                    color: widget.capsule.type == 'audio'
+                        ? const Color(0xFFFB923C)
+                        : const Color(0xFF5EEAD4),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.capsule.title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                  Switch(
+                    value: _isActive,
+                    onChanged: (value) {
+                      setState(() {
+                        _isActive = value;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(_isActive
+                              ? 'Cápsula activada'
+                              : 'Cápsula desactivada'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              if (widget.capsule.type == 'texto') ...[
+                const SizedBox(height: 8),
+                Text(
+                  widget.capsule.content,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Switch(
-                  value: _isActive,
-                  onChanged: (value) {
-                    setState(() {
-                      _isActive = value;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(_isActive
-                            ? 'Cápsula activada'
-                            : 'Cápsula desactivada'),
-                        duration: const Duration(seconds: 1),
+              ] else ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Cápsula de audio',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF94A3B8),
+                        fontStyle: FontStyle.italic,
                       ),
-                    );
-                  },
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.capsule.content,
-              style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            Chip(
-              label: Text(
-                widget.emotions
-                        .where((e) => e.id == widget.capsule.emotionId)
-                        .map((e) => e.name)
-                        .firstOrNull ??
-                    'Emoción ${widget.capsule.emotionId}',
+              const SizedBox(height: 12),
+              Chip(
+                label: Text(emotionName),
+                backgroundColor: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
+                labelStyle: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 12,
+                ),
               ),
-              backgroundColor: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
-              labelStyle: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 12,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

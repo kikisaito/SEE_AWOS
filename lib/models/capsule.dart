@@ -4,6 +4,10 @@ class Capsule {
   final String content;
   final int emotionId;
   final bool isActive;
+  final String type;
+  final String? audioPath;
+  final DateTime? createdAt;
+  final bool isSynced;
 
   Capsule({
     required this.id,
@@ -11,6 +15,10 @@ class Capsule {
     required this.content,
     required this.emotionId,
     required this.isActive,
+    this.type = 'texto',
+    this.audioPath,
+    this.createdAt,
+    this.isSynced = false,
   });
 
   factory Capsule.fromJson(Map<String, dynamic> json) {
@@ -20,6 +28,12 @@ class Capsule {
       content: json['content'] as String,
       emotionId: json['emotion_id'] as int,
       isActive: json['is_active'] as bool,
+      type: json['type'] as String? ?? 'texto',
+      audioPath: json['audio_path'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      isSynced: json['is_synced'] == true || json['is_synced'] == 1,
     );
   }
 
@@ -30,6 +44,10 @@ class Capsule {
       'content': content,
       'emotion_id': emotionId,
       'is_active': isActive,
+      'type': type,
+      'audio_path': audioPath,
+      'created_at': createdAt?.toIso8601String(),
+      'is_synced': isSynced,
     };
   }
 
@@ -39,6 +57,10 @@ class Capsule {
     String? content,
     int? emotionId,
     bool? isActive,
+    String? type,
+    String? audioPath,
+    DateTime? createdAt,
+    bool? isSynced,
   }) {
     return Capsule(
       id: id ?? this.id,
@@ -46,6 +68,10 @@ class Capsule {
       content: content ?? this.content,
       emotionId: emotionId ?? this.emotionId,
       isActive: isActive ?? this.isActive,
+      type: type ?? this.type,
+      audioPath: audioPath ?? this.audioPath,
+      createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 }

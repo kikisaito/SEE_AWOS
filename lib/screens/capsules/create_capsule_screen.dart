@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:record/record.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../providers/data_provider.dart';
 import '../../services/mock_api_service.dart';
+import '../../services/local_database_service.dart';
 
 class CreateCapsuleScreen extends StatefulWidget {
   const CreateCapsuleScreen({super.key});
@@ -16,9 +21,16 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
   final _contentController = TextEditingController();
 
   int _currentStep = 0;
+  String _capsuleType = 'texto';
   int? _selectedEmotionId;
   bool _isLoading = false;
   int _charCount = 0;
+
+  // Audio
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  String? _audioPath;
+  Duration _recordingDuration = Duration.zero;
 
   static const int _maxChars = 500;
 
@@ -36,6 +48,7 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -45,14 +58,32 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final apiService = MockApiService();
-      await apiService.createCapsule(
-        title: _titleController.text.trim().isEmpty
-            ? 'Sin título'
-            : _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        emotionId: _selectedEmotionId!,
-      );
+      final title = _titleController.text.trim().isEmpty
+          ? 'Sin título'
+          : _titleController.text.trim();
+
+      if (_capsuleType == 'texto') {
+        final apiService = MockApiService();
+        await apiService.createCapsule(
+          title: title,
+          content: _contentController.text.trim(),
+          emotionId: _selectedEmotionId!,
+        );
+      }
+
+      final capsuleId = 'cap-${DateTime.now().millisecondsSinceEpoch}';
+      await LocalDatabaseService.insertCapsule({
+        'id': capsuleId,
+        'title': title,
+        'content':
+            _capsuleType == 'texto' ? _contentController.text.trim() : '',
+        'emotion_id': _selectedEmotionId!,
+        'is_active': 1,
+        'type': _capsuleType,
+        'audio_path': _audioPath,
+        'is_synced': 0,
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,6 +119,144 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
     }
   }
 
+  Future<bool> _showTermsDialog() async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Términos y Condiciones'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Grabación de Audio en AWOS',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Al utilizar la función de grabación de audio, aceptas lo siguiente:',
+              ),
+              SizedBox(height: 8),
+              Text(
+                '1. El audio se almacena localmente en tu dispositivo.\n'
+                '2. Solo tú tienes acceso a estas grabaciones.\n'
+                '3. Las grabaciones son para tu uso personal y, si lo deseas, para compartir con tu terapeuta.\n'
+                '4. Puedes eliminar tus grabaciones en cualquier momento.\n'
+                '5. AWOS no comparte ni analiza el contenido de tus grabaciones.',
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Tu privacidad es nuestra prioridad.',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Acepto'),
+          ),
+        ],
+      ),
+    );
+    return accepted ?? false;
+  }
+
+  Future<void> _handleAudioSelected() async {
+    final accepted = await _showTermsDialog();
+    if (!accepted) return;
+
+    final status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Se requiere permiso de micrófono para grabar audio'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _capsuleType = 'audio';
+      _currentStep = 1;
+    });
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final fileName = 'capsule_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final filePath = '${dir.path}/$fileName';
+
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 44100,
+        ),
+        path: filePath,
+      );
+
+      setState(() {
+        _isRecording = true;
+        _recordingDuration = Duration.zero;
+      });
+
+      _updateRecordingDuration();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al iniciar grabación: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _updateRecordingDuration() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (_isRecording && mounted) {
+        setState(() {
+          _recordingDuration += const Duration(seconds: 1);
+        });
+        _updateRecordingDuration();
+      }
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      final path = await _recorder.stop();
+      setState(() {
+        _isRecording = false;
+        _audioPath = path;
+      });
+    } catch (e) {
+      setState(() => _isRecording = false);
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dataProvider = context.watch<DataProvider>();
@@ -111,7 +280,9 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
               const Text('Nueva Cápsula'),
               if (_currentStep > 0)
                 Text(
-                  'Paso ${_currentStep + 1} de 3',
+                  _capsuleType == 'texto'
+                      ? 'Paso ${_currentStep + 1} de 3'
+                      : 'Paso ${_currentStep + 1} de 3',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.normal,
@@ -120,14 +291,13 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
             ],
           ),
         ),
-        body: IndexedStack(
-          index: _currentStep,
-          children: [
-            _buildStep1(),
-            _buildStep2(),
-            _buildStep3(emotions),
-          ],
-        ),
+        body: _currentStep == 0
+            ? _buildStep1()
+            : _currentStep == 1
+                ? (_capsuleType == 'texto'
+                    ? _buildTextStep2()
+                    : _buildAudioStep2())
+                : _buildStep3(emotions),
       ),
     );
   }
@@ -160,6 +330,7 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
                   color: const Color(0xFF5EEAD4),
                   onTap: () {
                     setState(() {
+                      _capsuleType = 'texto';
                       _currentStep = 1;
                     });
                   },
@@ -170,10 +341,9 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
                 child: _TypeButton(
                   icon: Icons.mic,
                   label: 'AUDIO',
-                  subtitle: 'Próximamente',
-                  color: const Color(0xFF94A3B8),
-                  disabled: true,
-                  onTap: null,
+                  subtitle: 'Graba un mensaje',
+                  color: const Color(0xFFFB923C),
+                  onTap: _handleAudioSelected,
                 ),
               ),
             ],
@@ -183,7 +353,7 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
     );
   }
 
-  Widget _buildStep2() {
+  Widget _buildTextStep2() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Form(
@@ -203,6 +373,7 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
             const SizedBox(height: 32),
             TextFormField(
               controller: _titleController,
+              maxLength: 80,
               decoration: const InputDecoration(
                 labelText: 'Título (opcional)',
                 hintText: 'Ej: Mi afirmación diaria',
@@ -259,6 +430,130 @@ class _CreateCapsuleScreenState extends State<CreateCapsuleScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAudioStep2() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Graba tu cápsula',
+            style: Theme.of(context).textTheme.displaySmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Graba un mensaje de voz para ti',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _titleController,
+            maxLength: 80,
+            decoration: const InputDecoration(
+              labelText: 'Título (opcional)',
+              hintText: 'Ej: Palabras de aliento',
+              prefixIcon: Icon(Icons.title),
+            ),
+          ),
+          const Spacer(),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _formatDuration(_recordingDuration),
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        fontWeight: FontWeight.w300,
+                        color: _isRecording
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF475569),
+                      ),
+                ),
+                const SizedBox(height: 24),
+                if (_audioPath != null && !_isRecording)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Color(0xFF22C55E),
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Audio grabado',
+                          style: TextStyle(color: Color(0xFF22C55E)),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: _isRecording ? _stopRecording : _startRecording,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isRecording
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF5EEAD4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isRecording
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF5EEAD4))
+                              .withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _isRecording ? Icons.stop : Icons.mic,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _isRecording
+                      ? 'Toca para detener'
+                      : (_audioPath != null
+                          ? 'Toca para grabar de nuevo'
+                          : 'Toca para grabar'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_audioPath != null && !_isRecording)
+                  ? () => setState(() => _currentStep = 2)
+                  : null,
+              child: const Padding(
+                padding: EdgeInsets.all(4.0),
+                child: Text('Continuar'),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

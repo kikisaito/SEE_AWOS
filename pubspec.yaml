@@ -20,6 +20,14 @@ dependencies:
   shared_preferences: ^2.2.2
   sqflite: ^2.3.0
   path: ^1.8.3
+  path_provider: ^2.1.1
+  
+  # Audio
+  record: 5.0.4
+  audioplayers: ^6.1.0
+  
+  # Permissions
+  permission_handler: ^11.1.0
   
   # Utilities
   intl: ^0.18.1
@@ -34,3 +42,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  record_platform_interface: 1.2.0

@@ -16,7 +16,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE crisis (
@@ -34,9 +34,41 @@ class LocalDatabaseService {
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
           )
         ''');
+        await db.execute('''
+          CREATE TABLE capsules (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL DEFAULT '',
+            emotion_id INTEGER NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            type TEXT NOT NULL DEFAULT 'texto',
+            audio_path TEXT,
+            is_synced INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          )
+        ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS capsules (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL DEFAULT '',
+              emotion_id INTEGER NOT NULL,
+              is_active INTEGER NOT NULL DEFAULT 1,
+              type TEXT NOT NULL DEFAULT 'texto',
+              audio_path TEXT,
+              is_synced INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          ''');
+        }
       },
     );
   }
+
+  // --- Crisis methods ---
 
   static Future<int> insertCrisis(Map<String, dynamic> crisis) async {
     final db = await database;
@@ -91,5 +123,40 @@ class LocalDatabaseService {
   static Future<List<Map<String, dynamic>>> getAllCrises() async {
     final db = await database;
     return await db.query('crisis', orderBy: 'started_at DESC');
+  }
+
+  // --- Capsules methods ---
+
+  static Future<int> insertCapsule(Map<String, dynamic> capsule) async {
+    final db = await database;
+    return await db.insert(
+      'capsules',
+      capsule,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllCapsules() async {
+    final db = await database;
+    return await db.query('capsules', orderBy: 'created_at DESC');
+  }
+
+  static Future<int> updateCapsuleSync(String capsuleId) async {
+    final db = await database;
+    return await db.update(
+      'capsules',
+      {'is_synced': 1},
+      where: 'id = ?',
+      whereArgs: [capsuleId],
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getUnsyncedCapsules() async {
+    final db = await database;
+    return await db.query(
+      'capsules',
+      where: 'is_synced = ?',
+      whereArgs: [0],
+    );
   }
 }
