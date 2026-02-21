@@ -96,6 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       labelText: 'Nombre Preferido',
                       hintText: 'Cómo quieres que te llamemos',
                       prefixIcon: Icon(Icons.person_outlined),
+                      counterText: '',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
