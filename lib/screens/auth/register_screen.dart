@@ -91,6 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _nombreController,
                     textCapitalization: TextCapitalization.words,
+                    maxLength: 100,
                     decoration: const InputDecoration(
                       labelText: 'Nombre Preferido',
                       hintText: 'Cómo quieres que te llamemos',

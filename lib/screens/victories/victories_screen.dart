@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/victory_provider.dart';
+import '../../widgets/app_drawer.dart';
 
 class VictoriesScreen extends StatefulWidget {
   const VictoriesScreen({super.key});
@@ -164,7 +165,9 @@ class _VictoriesScreenState extends State<VictoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Victorias'),
+        actions: const [AppDrawerButton()],
       ),
+      endDrawer: const AppDrawer(),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

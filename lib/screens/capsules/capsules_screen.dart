@@ -4,6 +4,7 @@ import '../../models/emotion.dart';
 import '../../providers/data_provider.dart';
 import '../../models/capsule.dart';
 import '../../services/mock_api_service.dart';
+import '../../widgets/app_drawer.dart';
 import 'capsule_detail_screen.dart';
 import 'create_capsule_screen.dart';
 
@@ -59,7 +60,9 @@ class _CapsulesScreenState extends State<CapsulesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Cápsulas'),
+        actions: const [AppDrawerButton()],
       ),
+      endDrawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreate,
         child: const Icon(Icons.add),

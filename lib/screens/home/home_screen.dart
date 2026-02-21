@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_provider.dart';
+import '../../widgets/app_drawer.dart';
 import '../capsules/capsules_screen.dart';
 import '../victories/victories_screen.dart';
 import '../crisis/crisis_emotion_screen.dart';
@@ -86,15 +87,9 @@ class _DashboardViewState extends State<_DashboardView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AWOS'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.logout();
-            },
-          ),
-        ],
+        actions: const [AppDrawerButton()],
       ),
+      endDrawer: const AppDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
