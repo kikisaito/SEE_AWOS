@@ -16,7 +16,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE crisis (
@@ -47,6 +47,21 @@ class LocalDatabaseService {
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
           )
         ''');
+        await db.execute('''
+          CREATE TABLE victory_definitions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE victory_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            definition_id INTEGER NOT NULL,
+            logged_date TEXT NOT NULL,
+            UNIQUE(definition_id, logged_date)
+          )
+        ''');
+        await _seedDefaultVictories(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -63,6 +78,28 @@ class LocalDatabaseService {
               created_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
           ''');
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS victory_definitions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS victory_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              definition_id INTEGER NOT NULL,
+              logged_date TEXT NOT NULL,
+              UNIQUE(definition_id, logged_date)
+            )
+          ''');
+          await _seedDefaultVictories(db);
+        }
+        if (oldVersion < 4) {
+          await db.delete('victory_definitions');
+          await db.delete('victory_logs');
+          await _seedDefaultVictories(db);
         }
       },
     );
@@ -158,5 +195,91 @@ class LocalDatabaseService {
       where: 'is_synced = ?',
       whereArgs: [0],
     );
+  }
+
+  // --- Victory methods ---
+
+  static const _defaultVictories = [
+    'Salir a caminar',
+    'Hacer 10 respiraciones',
+    'Hablar con un ser querido',
+    'Leer un libro',
+    'Mandar un mensaje lindo',
+  ];
+
+  static Future<void> _seedDefaultVictories(Database db) async {
+    for (final name in _defaultVictories) {
+      await db.insert('victory_definitions', {'name': name});
+    }
+  }
+
+  static Future<int> insertVictoryDefinition(String name) async {
+    final db = await database;
+    return await db.insert('victory_definitions', {'name': name});
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllVictoryDefinitions() async {
+    final db = await database;
+    return await db.query('victory_definitions', orderBy: 'id ASC');
+  }
+
+  static Future<int> updateVictoryDefinition(int id, String name) async {
+    final db = await database;
+    return await db.update(
+      'victory_definitions',
+      {'name': name},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  static Future<int> deleteVictoryDefinition(int id) async {
+    final db = await database;
+    await db
+        .delete('victory_logs', where: 'definition_id = ?', whereArgs: [id]);
+    return await db
+        .delete('victory_definitions', where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<int> logVictoryToday(int definitionId) async {
+    final db = await database;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return await db.insert(
+      'victory_logs',
+      {'definition_id': definitionId, 'logged_date': today},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  static Future<int> unlogVictoryToday(int definitionId) async {
+    final db = await database;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return await db.delete(
+      'victory_logs',
+      where: 'definition_id = ? AND logged_date = ?',
+      whereArgs: [definitionId, today],
+    );
+  }
+
+  static Future<Set<int>> getTodayLoggedIds() async {
+    final db = await database;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final results = await db.query(
+      'victory_logs',
+      where: 'logged_date = ?',
+      whereArgs: [today],
+    );
+    return results.map((r) => r['definition_id'] as int).toSet();
+  }
+
+  static Future<List<Map<String, dynamic>>> getVictoryHistory() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT vl.id, vd.name, vl.logged_date
+      FROM victory_logs vl
+      INNER JOIN victory_definitions vd ON vd.id = vl.definition_id
+      ORDER BY vl.logged_date DESC, vl.id DESC
+      LIMIT 50
+    ''');
   }
 }

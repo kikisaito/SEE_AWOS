@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../providers/data_provider.dart';
-import '../../services/mock_api_service.dart';
-import '../../models/victory.dart';
+import '../../providers/victory_provider.dart';
 
 class VictoriesScreen extends StatefulWidget {
   const VictoriesScreen({super.key});
@@ -13,92 +11,161 @@ class VictoriesScreen extends StatefulWidget {
 }
 
 class _VictoriesScreenState extends State<VictoriesScreen> {
-  final MockApiService _apiService = MockApiService();
-  List<Victory> _victories = [];
-  bool _isLoading = false;
-  final Set<String> _registeredToday = {};
-
   @override
   void initState() {
     super.initState();
-    _loadVictories();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<VictoryProvider>().loadAll();
+    });
   }
 
-  Future<void> _loadVictories() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final victories = await _apiService.getMyVictories();
-      setState(() {
-        _victories = victories;
-        // Mark victories registered today
-        final today = DateTime.now();
-        for (var victory in victories) {
-          if (victory.occurredAt.year == today.year &&
-              victory.occurredAt.month == today.month &&
-              victory.occurredAt.day == today.day) {
-            _registeredToday.add(victory.name);
-          }
-        }
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar victorias: $e')),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _registerVictory(String victoryTypeName) async {
-    if (_registeredToday.contains(victoryTypeName)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ya registraste esta victoria hoy')),
-      );
-      return;
-    }
-
-    try {
-      final victory = await _apiService.createVictory(
-        victoryTypeName,
-        DateTime.now(),
-      );
-
-      setState(() {
-        _victories.insert(0, victory);
-        _registeredToday.add(victoryTypeName);
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Bien hecho! 🎉'),
-            backgroundColor: Color(0xFF22C55E),
-            duration: Duration(seconds: 2),
+  void _showAddDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nueva Victoria'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: const InputDecoration(
+            hintText: 'Ej: Leí 10 páginas',
+            labelText: '¿Qué logro quieres registrar?',
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                context.read<VictoryProvider>().addDefinition(name);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Victoria añadida'),
+                    backgroundColor: Color(0xFF22C55E),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOptionsSheet(VictoryDefinition def) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                def.name,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.edit, color: Color(0xFF5EEAD4)),
+              title: const Text('Cambiar nombre'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditDialog(def);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Color(0xFFEF4444)),
+              title: const Text('Eliminar'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDelete(def);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(VictoryDefinition def) {
+    final controller = TextEditingController(text: def.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Victoria'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: const InputDecoration(labelText: 'Nombre'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                context.read<VictoryProvider>().updateDefinition(def.id, name);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(VictoryDefinition def) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Victoria'),
+        content: Text('¿Eliminar "${def.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            onPressed: () {
+              context.read<VictoryProvider>().deleteDefinition(def.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dataProvider = context.watch<DataProvider>();
-    final victoryTypes = dataProvider.victoryTypes;
+    final provider = context.watch<VictoryProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Victorias'),
       ),
-      body: _isLoading
+      body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -117,27 +184,46 @@ class _VictoriesScreenState extends State<VictoriesScreen> {
                   const SizedBox(height: 16),
                   Card(
                     child: Column(
-                      children: victoryTypes.map((type) {
-                        final isRegistered =
-                            _registeredToday.contains(type.name);
-                        return CheckboxListTile(
-                          title: Text(type.name),
-                          value: isRegistered,
-                          onChanged: (value) {
-                            if (value == true) {
-                              _registerVictory(type.name);
-                            }
-                          },
-                          secondary: Icon(
-                            isRegistered
-                                ? Icons.check_circle
-                                : Icons.circle_outlined,
-                            color: isRegistered
-                                ? const Color(0xFF22C55E)
-                                : Theme.of(context).colorScheme.primary,
-                          ),
-                        );
-                      }).toList(),
+                      children: [
+                        ...provider.definitions.map((def) {
+                          final isChecked =
+                              provider.todayChecked.contains(def.id);
+                          return GestureDetector(
+                            onLongPress: () => _showOptionsSheet(def),
+                            child: CheckboxListTile(
+                              title: Text(def.name),
+                              value: isChecked,
+                              onChanged: (value) {
+                                provider.toggleCheck(def.id);
+                                if (value == true) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('¡Bien hecho! 🎉'),
+                                      backgroundColor: Color(0xFF22C55E),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                }
+                              },
+                              secondary: Icon(
+                                isChecked
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                color: isChecked
+                                    ? const Color(0xFF22C55E)
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          );
+                        }),
+                        const Divider(height: 1),
+                        TextButton.icon(
+                          onPressed: _showAddDialog,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Añadir nueva victoria'),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -148,7 +234,7 @@ class _VictoriesScreenState extends State<VictoriesScreen> {
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 16),
-                  _victories.isEmpty
+                  provider.history.isEmpty
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(32.0),
@@ -161,12 +247,12 @@ class _VictoriesScreenState extends State<VictoriesScreen> {
                       : ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _victories.length,
+                          itemCount: provider.history.length,
                           separatorBuilder: (context, index) =>
                               const SizedBox(height: 8),
                           itemBuilder: (context, index) {
-                            final victory = _victories[index];
-                            return _VictoryCard(victory: victory);
+                            final log = provider.history[index];
+                            return _VictoryCard(log: log);
                           },
                         ),
                 ],
@@ -177,26 +263,21 @@ class _VictoriesScreenState extends State<VictoriesScreen> {
 }
 
 class _VictoryCard extends StatelessWidget {
-  final Victory victory;
+  final VictoryLog log;
 
-  const _VictoryCard({required this.victory});
+  const _VictoryCard({required this.log});
 
-  String _getRelativeTime(DateTime dateTime) {
+  String _formatDate(String dateStr) {
+    final date = DateTime.tryParse(dateStr);
+    if (date == null) return dateStr;
     final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return 'Hace ${difference.inMinutes} minutos';
-      }
-      return 'Hace ${difference.inHours} horas';
-    } else if (difference.inDays == 1) {
-      return 'Ayer';
-    } else if (difference.inDays < 7) {
-      return 'Hace ${difference.inDays} días';
-    } else {
-      return DateFormat('dd/MM/yyyy').format(dateTime);
-    }
+    final today = DateTime(now.year, now.month, now.day);
+    final logDate = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(logDate).inDays;
+    if (diff == 0) return 'Hoy';
+    if (diff == 1) return 'Ayer';
+    if (diff < 7) return 'Hace $diff días';
+    return DateFormat('dd/MM/yyyy').format(date);
   }
 
   @override
@@ -216,10 +297,10 @@ class _VictoryCard extends StatelessWidget {
           ),
         ),
         title: Text(
-          victory.name,
+          log.name,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        subtitle: Text(_getRelativeTime(victory.occurredAt)),
+        subtitle: Text(_formatDate(log.loggedDate)),
       ),
     );
   }

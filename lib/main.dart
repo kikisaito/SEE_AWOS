@@ -5,6 +5,7 @@ import 'services/mock_api_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
 import 'providers/crisis_provider.dart';
+import 'providers/victory_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 
@@ -49,6 +50,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => CrisisProvider(apiService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => VictoryProvider(),
         ),
       ],
       child: Consumer<AuthProvider>(
