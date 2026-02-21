@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../screens/auth/login_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -82,6 +83,13 @@ class AppDrawer extends StatelessWidget {
                       onPressed: () async {
                         Navigator.pop(ctx);
                         await authProvider.logout();
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
                       },
                       child: const Text('Eliminar'),
                     ),
@@ -98,6 +106,12 @@ class AppDrawer extends StatelessWidget {
             onTap: () async {
               Navigator.pop(context);
               await authProvider.logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
           ),
           const SizedBox(height: 8),
