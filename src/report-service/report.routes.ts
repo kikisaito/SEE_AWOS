@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { generateClinicalReport } from '../controllers/report.controller';
-import { authenticateToken } from '../middlewares/auth.middleware';
+import { generateClinicalReport } from './report.controller';
+import { authenticateToken } from '../shared/middlewares/auth.middleware';
 
 const router = Router();
 

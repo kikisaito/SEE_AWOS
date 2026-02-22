@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
+import prisma from '../../shared/config/prisma';
 
 interface AuthRequest extends Request { user?: { userId: string } }
 
@@ -11,7 +11,7 @@ export const getVictoryTypes = async (req: Request, res: Response) => {
     where: {
       OR: [
         { userId: null },      
-        { userId: userId }     // Mías
+        { userId: userId }     //capsulas de usuario
       ]
     },
     orderBy: { victoryTypeId: 'asc' }
@@ -43,7 +43,6 @@ export const registerVictories = async (req: Request, res: Response) => {
      
     }
 
-    // Lo mejor es que el frontend haga dos llamadas: 
     //   1. Crear Tipo Personalizado (si hay texto).
     //   2. Registrar Victorias (con los IDs).
     

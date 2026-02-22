@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
-import prisma from '../config/prisma';
+import prisma from '../shared/config/prisma';
 
 interface AuthRequest extends Request {
   user?: { userId: string; email: string };
