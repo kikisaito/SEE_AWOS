@@ -6,7 +6,7 @@ import { authenticateToken } from '../../shared/middlewares/auth.middleware';
 const router = Router();
 
 
-router.post('/start', authenticateToken, startCrisis);
+router.post('/', authenticateToken, startCrisis);
 
                                                         //PUT /api/crisis/:id/end
 router.put('/:id/end', authenticateToken, updateCrisis);
