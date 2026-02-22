@@ -5,6 +5,7 @@ import capsuleRoutes from './routes/capsule.routes';
 import victoryRoutes from './routes/victory.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import recommendationRoutes from './routes/recommendation.routes';
+import userRoutes from './routes/user.routes'
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use('/api/capsules', capsuleRoutes);
 app.use('/api/victories', victoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/users', userRoutes);
 
 const PORT = process.env.CORE_PORT || 3002;
 app.listen(PORT, () => {
