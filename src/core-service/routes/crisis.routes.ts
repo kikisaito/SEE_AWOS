@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { startCrisis, updateCrisis, updateCrisisReflection } from '../controllers/crisis.controller';
-import { authenticateToken } from '../middlewares/auth.middleware';
+import { authenticateToken } from '../../shared/middlewares/auth.middleware';
 
 
 const router = Router();

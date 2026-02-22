@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDashboardSummary, getPendingReflections } from '../controllers/dashboard.controller';
-import { authenticateToken } from '../middlewares/auth.middleware';
+import { authenticateToken } from '../../shared/middlewares/auth.middleware';
 
 const router = Router();
 router.get('/summary', authenticateToken, getDashboardSummary);

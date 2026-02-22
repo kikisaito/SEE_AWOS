@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
+import prisma from '../../shared/config/prisma';
 
 
 export const getRecommendations = async (req: Request, res: Response) => {

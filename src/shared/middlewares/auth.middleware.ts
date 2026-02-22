@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// Truco de TypeScript: Definimos que nuestras peticiones pueden traer un usuario
 export interface AuthRequest extends Request {
   user?: any;
 }

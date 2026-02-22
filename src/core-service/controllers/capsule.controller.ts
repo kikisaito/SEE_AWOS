@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
-import prisma from '../config/prisma'; 
-import { generateUploadUrl } from '../services/s3.service';
+import prisma from '../../shared/config/prisma'; 
+import { generateUploadUrl } from '../../shared/s3.service';
 
 interface AuthRequest extends Request {
   user?: {

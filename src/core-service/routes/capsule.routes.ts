@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requestUpload, createCapsule, getCapsules, getPresignedUrl } from '../controllers/capsule.controller';
-import { authenticateToken } from '../middlewares/auth.middleware';
+import { authenticateToken } from '../../shared/middlewares/auth.middleware';
 
 
 const router = Router();

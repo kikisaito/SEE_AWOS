@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma'; 
-import { hashPassword, comparePassword, generateToken } from '../services/auth.service';
+import prisma from '../shared/config/prisma'; 
+import { hashPassword, comparePassword, generateToken } from './auth.service';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -9,13 +9,13 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, preferredName } = req.body;
     
-    // Validación
     if (!email || !password || !preferredName) {
         return res.status(400).json({ error: 'Faltan datos: email, password o preferredName' });
     }
 
     const userExists = await prisma.user.findUnique({ where: { email } });
     if (userExists) return res.status(400).json({ error: 'El usuario ya existe' });
+    
 
     const hashedPassword = await hashPassword(password);
 
