@@ -7,7 +7,7 @@
 
 ## Descripción del Proyecto
 
-El backend del Sistema de Estabilización Emocional (SEE/AWOS) es una API RESTful diseñada para dar soporte clínico, gamificación de hábitos y contención de crisis emocionales. El sistema permite el registro de usuarios, seguimiento de métricas de salud mental, almacenamiento de recursos multimedia en la nube y generación de reportes clínicos automatizados en formato PDF.
+El backend del Sistema de Estabilización Emocional (SEE/AWOS) es una API RESTful diseñada para dar soporte clínico, registros de hábitos y contención de crisis emocionales. El sistema permite el registro de usuarios, seguimiento de métricas de salud mental, almacenamiento de recursos multimedia en la nube y generación de reportes clínicos automatizados en formato PDF.
 
 ## Arquitectura de Microservicios
 
@@ -48,14 +48,32 @@ El sistema se compone de tres microservicios independientes:
 ### Variables de Entorno (.env)
 Se debe crear un archivo `.env` en la raíz del proyecto con las siguientes configuraciones:
 DATABASE_URL="postgresql://usuario:password@localhost:5432/see_db"
+
+
 JWT_SECRET="tu_clave_secreta"
+
+
 AWS_REGION="tu_region"
+
+
 AWS_ACCESS_KEY_ID="tu_access_key"
+
+
 AWS_SECRET_ACCESS_KEY="tu_secret_key"
+
+
 AWS_BUCKET_NAME="tu_bucket"
+
+
 AUTH_PORT=3001
+
+
 CORE_PORT=3002
+
+
 REPORT_PORT=3003
+
+
 
 ### Instalación
 
