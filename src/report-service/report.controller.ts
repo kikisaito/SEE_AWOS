@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
+// 👇 1. Ruta corregida (Solo dos niveles arriba: ../../)
 import prisma from '../shared/config/prisma';
 
 interface AuthRequest extends Request {
-  user?: { userId: string; email: string };
+  user?: { userId: string };
 }
 
 const formatDate = (date: Date) => new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
@@ -11,37 +12,49 @@ const formatDate = (date: Date) => new Intl.DateTimeFormat('es-MX', { day: '2-di
 export const generateClinicalReport = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
-    const userEmail = (req as AuthRequest).user?.email || "Usuario";
     const { startDate, endDate } = req.query;
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // 1. Configurar Fechas
+    // 1. OBTENER EL NOMBRE REAL DEL USUARIO
+    const user = await prisma.user.findUnique({
+        where: { userId },
+        select: { preferredName: true, email: true }
+    });
+    const userName = user?.preferredName || user?.email || "Paciente SEE";
+
+    // 2. Configurar Fechas
     const end = endDate ? new Date(String(endDate)) : new Date();
     const start = startDate ? new Date(String(startDate)) : new Date();
     if (!startDate) start.setDate(end.getDate() - 30);
 
-    // 2. OBTENER DATOS DE CRISIS (Para análisis profundo)
+    // 3. OBTENER DATOS DE CRISIS
     const crisisHistory = await prisma.crisisSession.findMany({
       where: { userId, startedAt: { gte: start, lte: end } },
-      include: { selectedEmotions: true, finalEvaluation: true },
+      include: { 
+          selectedEmotions: true 
+      },
       orderBy: { startedAt: 'desc' }
     });
 
-    // 3. OBTENER VICTORIAS CON DETALLE (Para saber de qué tipo son)
+    // 4. OBTENER VICTORIAS
     const victories = await prisma.userVictory.findMany({
       where: { userId, occurredAt: { gte: start, lte: end } },
       include: { victoryType: true }
     });
 
-    
+    // --- A. Procesar Emociones ---
     const emotionCounts: Record<string, number> = {};
-    crisisHistory.forEach(c => {
-      c.selectedEmotions.forEach(e => {
-        emotionCounts[e.name] = (emotionCounts[e.name] || 0) + 1;
-      });
+    // 👇 2. Agregamos ": any" a la 'c' y la 'e' para que TypeScript no llore
+    crisisHistory.forEach((c: any) => { 
+      if (c.selectedEmotions && Array.isArray(c.selectedEmotions)) {
+          c.selectedEmotions.forEach((e: any) => { 
+            const emotionName = e.name || 'Desconocida';
+            emotionCounts[emotionName] = (emotionCounts[emotionName] || 0) + 1;
+          });
+      }
     });
-    // Convertir a array y ordenar por frecuencia
+
     const sortedEmotions = Object.entries(emotionCounts)
       .sort(([,a], [,b]) => b - a)
       .map(([name, count]) => ({
@@ -50,36 +63,39 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         percent: crisisHistory.length > 0 ? ((count / crisisHistory.length) * 100).toFixed(1) : "0"
       }));
 
-    // B. Efectividad de Estrategias
-    const crisesWithCapsule = crisisHistory.filter(c => c.usedCapsuleId !== null).length;
-    const crisesImproved = crisisHistory.filter(c => 
-      c.finalEvaluation?.description === 'Mejor' || c.finalEvaluation?.description === 'Un poco mejor'
-    ).length;
-
-    // C. Victorias más frecuentes
-    const victoryCounts: Record<string, number> = {};
-    victories.forEach(v => {
-      victoryCounts[v.victoryType.name] = (victoryCounts[v.victoryType.name] || 0) + 1;
-    });
-    const sortedVictories = Object.entries(victoryCounts)
-      .sort(([,a], [,b]) => b - a);
-
-
+    // --- B. Efectividad de Estrategias ---
+    // 👇 Agregamos ": any"
+    const crisesWithCapsule = crisisHistory.filter((c: any) => c.usedCapsuleId !== null && c.usedCapsuleId !== undefined).length;
     
+    // 👇 Agregamos ": any"
+    const crisesImproved = crisisHistory.filter((c: any) => { 
+        const evalData = c.finalEvaluation;
+        if (!evalData) return false;
+        const desc = typeof evalData === 'string' ? evalData : evalData.description;
+        return desc === 'Mejor' || desc === 'Un poco mejor';
+    }).length;
+
+    // --- C. Victorias más frecuentes ---
+    const victoryCounts: Record<string, number> = {};
+    // 👇 Agregamos ": any" a la 'v'
+    victories.forEach((v: any) => { 
+      if (v.victoryType && v.victoryType.name) {
+          victoryCounts[v.victoryType.name] = (victoryCounts[v.victoryType.name] || 0) + 1;
+      }
+    });
+    const sortedVictories = Object.entries(victoryCounts).sort(([,a], [,b]) => b - a);
+
+    // --- CONFIGURACIÓN DEL ARCHIVO PDF ---
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=SEE_Reporte_${Date.now()}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=SEE_Reporte_${userName.replace(/\s+/g, '_')}.pdf`);
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     doc.pipe(res);
-
-    
-    const bgDark = '#1E1E1E';  
-    
     
     // --- ENCABEZADO TIPO "TERMINAL" ---
     doc.fontSize(18).font('Courier-Bold').text('INFORME CLÍNICO GENERADO POR SEE/AWOS');
     doc.fontSize(10).font('Courier').text('============================================================');
-    doc.text(`PACIENTE: ${userEmail}`);
+    doc.text(`PACIENTE: ${userName}`); 
     doc.text(`PERIODO:  ${formatDate(start)} - ${formatDate(end)}`);
     doc.text(`GENERADO: ${new Date().toLocaleString()}`);
     doc.text('============================================================');
@@ -91,16 +107,18 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.fontSize(10).font('Courier');
     doc.text(`• Total de Crisis:      ${crisisHistory.length}`);
     
-    // Calcular frecuencia aprox (días entre crisis)
     const daysDiff = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)));
+    
+    // 👇 3. ¡AQUÍ ESTÁ LA LÍNEA QUE SE HABÍA BORRADO A MEDIAS!
     const freq = crisisHistory.length > 0 ? (daysDiff / crisisHistory.length).toFixed(1) : "N/A";
+    
     doc.text(`• Frecuencia Estimada:  Una crisis cada ${freq} días`);
     
     doc.moveDown(0.5);
     doc.font('Courier-Bold').text('EMOCIONES PREDOMINANTES:');
     doc.font('Courier');
     if (sortedEmotions.length === 0) doc.text("  Sin datos suficientes.");
-    sortedEmotions.slice(0, 5).forEach(e => {
+    sortedEmotions.slice(0, 5).forEach((e: any) => {
       doc.text(`  - ${e.name.padEnd(15)}: ${e.count} eventos (${e.percent}%)`);
     });
     doc.moveDown();
@@ -115,7 +133,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
 
     doc.text(`• Uso de Cápsulas:      ${crisesWithCapsule} de ${crisisHistory.length} crisis (${capsulePercent}%)`);
     doc.text(`• Tasa de Mejora:       ${crisesImproved} de ${crisisHistory.length} crisis reportaron alivio (${improvePercent}%)`);
-    doc.text(`• Ejercicios Resp.:     ${crisisHistory.filter(c => c.breathingExerciseCompleted).length} completados`);
+    doc.text(`• Ejercicios Resp.:     ${crisisHistory.filter((c: any) => c.breathingExerciseCompleted).length} completados`);
     doc.moveDown();
 
     // --- SECCIÓN 3: VICTORIAS (HÁBITOS) ---
@@ -126,7 +144,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.moveDown(0.5);
     doc.text('HÁBITOS MÁS FRECUENTES:');
     if (sortedVictories.length === 0) doc.text("  Sin registros aún.");
-    sortedVictories.forEach(([name, count]) => {
+    sortedVictories.forEach(([name, count]: [string, number]) => {
       const percent = victories.length > 0 ? ((count / victories.length) * 100).toFixed(0) : "0";
       doc.text(`  [✔] ${name.padEnd(25)}: ${count} veces (${percent}%)`);
     });
@@ -137,20 +155,25 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.text('------------------------------------------------------------');
     doc.moveDown(0.5);
     
-    crisisHistory.forEach(crisis => {
-        // Control de salto de página
-        if (doc.y > 700) doc.addPage();
+    crisisHistory.forEach((crisis: any) => {
+        if (doc.y > 700) doc.addPage(); 
 
         doc.fontSize(10).font('Courier-Bold').text(`${formatDate(new Date(crisis.startedAt))}`);
         doc.font('Courier').fontSize(9);
-        doc.text(`   Intensidad: ${crisis.intensityLevel}/10 | Estado Final: ${crisis.finalEvaluation?.description || 'N/A'}`);
-        doc.text(`   Emociones:  ${crisis.selectedEmotions.map(e => e.name).join(', ')}`);
+        
+        const finalEval = typeof crisis.finalEvaluation === 'string' ? crisis.finalEvaluation : (crisis.finalEvaluation?.description || 'N/A');
+
+        doc.text(`   Intensidad: ${crisis.intensityLevel || 'N/A'}/10 | Estado Final: ${finalEval}`);
+        
+        if (crisis.selectedEmotions && Array.isArray(crisis.selectedEmotions)) {
+           doc.text(`   Emociones:  ${crisis.selectedEmotions.map((e: any) => e.name).join(', ')}`);
+        }
+        
         if (crisis.triggerDesc) doc.text(`   Detonante:  "${crisis.triggerDesc}"`);
         if (crisis.notes) doc.text(`   Notas:      "${crisis.notes}"`);
         doc.moveDown(0.5);
     });
 
-    // Pie de página legal
     doc.fontSize(8).text(
       '\n\nAVISO: Este reporte es una herramienta complementaria y no sustituye el juicio clínico profesional.',
       { align: 'center' }
