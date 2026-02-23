@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
-// 👇 1. Ruta corregida (Solo dos niveles arriba: ../../)
 import prisma from '../shared/config/prisma';
 
 interface AuthRequest extends Request {
   user?: { userId: string };
 }
 
-const formatDate = (date: Date) => new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
+const formatDate = (date: Date) => new Intl.DateTimeFormat(
+  'es-MX', { day:   '2-digit', month: 'long', year: 'numeric' }).format(date);
 
 export const generateClinicalReport = async (req: Request, res: Response) => {
   try {
@@ -45,7 +45,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
 
     // --- A. Procesar Emociones ---
     const emotionCounts: Record<string, number> = {};
-    // 👇 2. Agregamos ": any" a la 'c' y la 'e' para que TypeScript no llore
     crisisHistory.forEach((c: any) => { 
       if (c.selectedEmotions && Array.isArray(c.selectedEmotions)) {
           c.selectedEmotions.forEach((e: any) => { 
@@ -63,11 +62,15 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         percent: crisisHistory.length > 0 ? ((count / crisisHistory.length) * 100).toFixed(1) : "0"
       }));
 
-    // --- B. Efectividad de Estrategias ---
-    // 👇 Agregamos ": any"
+
+
+
+
+      
+  
     const crisesWithCapsule = crisisHistory.filter((c: any) => c.usedCapsuleId !== null && c.usedCapsuleId !== undefined).length;
     
-    // 👇 Agregamos ": any"
+    
     const crisesImproved = crisisHistory.filter((c: any) => { 
         const evalData = c.finalEvaluation;
         if (!evalData) return false;
@@ -75,15 +78,22 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         return desc === 'Mejor' || desc === 'Un poco mejor';
     }).length;
 
-    // --- C. Victorias más frecuentes ---
+    
     const victoryCounts: Record<string, number> = {};
-    // 👇 Agregamos ": any" a la 'v'
+    
     victories.forEach((v: any) => { 
       if (v.victoryType && v.victoryType.name) {
           victoryCounts[v.victoryType.name] = (victoryCounts[v.victoryType.name] || 0) + 1;
       }
     });
     const sortedVictories = Object.entries(victoryCounts).sort(([,a], [,b]) => b - a);
+
+
+
+
+
+
+
 
     // --- CONFIGURACIÓN DEL ARCHIVO PDF ---
     res.setHeader('Content-Type', 'application/pdf');
@@ -92,14 +102,23 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     doc.pipe(res);
     
+
+
+
     // --- ENCABEZADO TIPO "TERMINAL" ---
-    doc.fontSize(18).font('Courier-Bold').text('INFORME CLÍNICO GENERADO POR SEE/AWOS');
+    doc.fontSize(18).font('Courier-Bold').text('INFORME GENERADO POR SEE/AWOS');
     doc.fontSize(10).font('Courier').text('============================================================');
     doc.text(`PACIENTE: ${userName}`); 
     doc.text(`PERIODO:  ${formatDate(start)} - ${formatDate(end)}`);
     doc.text(`GENERADO: ${new Date().toLocaleString()}`);
     doc.text('============================================================');
     doc.moveDown();
+
+
+
+
+
+
 
     // --- SECCIÓN 1: RESUMEN GENERAL ---
     doc.fontSize(14).font('Courier-Bold').text('[1] RESUMEN GENERAL');
@@ -108,8 +127,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.text(`• Total de Crisis:      ${crisisHistory.length}`);
     
     const daysDiff = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)));
-    
-    // 👇 3. ¡AQUÍ ESTÁ LA LÍNEA QUE SE HABÍA BORRADO A MEDIAS!
     const freq = crisisHistory.length > 0 ? (daysDiff / crisisHistory.length).toFixed(1) : "N/A";
     
     doc.text(`• Frecuencia Estimada:  Una crisis cada ${freq} días`);
@@ -122,6 +139,10 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
       doc.text(`  - ${e.name.padEnd(15)}: ${e.count} eventos (${e.percent}%)`);
     });
     doc.moveDown();
+
+
+
+
 
     // --- SECCIÓN 2: EFECTIVIDAD ---
     doc.fontSize(14).font('Courier-Bold').text('[2] EFECTIVIDAD DE ESTRATEGIAS');
@@ -150,6 +171,14 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
+
+
+
+
+
+
+
+
     // --- SECCIÓN 4: BITÁCORA DETALLADA ---
     doc.fontSize(14).font('Courier-Bold').text('[4] DETALLE CRONOLÓGICO');
     doc.text('------------------------------------------------------------');
@@ -173,6 +202,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         if (crisis.notes) doc.text(`   Notas:      "${crisis.notes}"`);
         doc.moveDown(0.5);
     });
+
+
+
+
+
+
 
     doc.fontSize(8).text(
       '\n\nAVISO: Este reporte es una herramienta complementaria y no sustituye el juicio clínico profesional.',
