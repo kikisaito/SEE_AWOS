@@ -57,7 +57,6 @@ model CrisisSession {
   
   // CAMBIO CRÍTICO: Una crisis puede tener MUCHAS emociones al inicio
   selectedEmotions EmotionCatalog[] @relation("CrisisEmotions")
-
   // DATOS DE REFLEXIÓN (Basado en image_8ebf40.png)
   intensityLevel  Int       @default(5) @map("intensity_level") // Aunque no salga en UI, lo pediste para reporte
   triggerDesc     String?   @map("trigger_description") @db.Text // "¿Qué pasó antes?"

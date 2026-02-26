@@ -7,6 +7,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import recommendationRoutes from './routes/recommendation.routes';
 import userRoutes from './routes/user.routes'
 import s3Routes from './routes/s3.routes';
+import telemetryRoutes from './routes/telemetry.routes';
 
 
 const app = express();
@@ -21,6 +22,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/s3', s3Routes);
+app.use('/api/telemetry', telemetryRoutes);
+
 
 
 const PORT = process.env.CORE_PORT || 3002;
