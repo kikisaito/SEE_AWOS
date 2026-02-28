@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../../shared/config/prisma';
 import { insertMetricsToBigQuery } from '../services/bigquery.service';
+import fs from 'fs';
+import path from 'path';
 
 export const exportDailySnapshot = async (req: Request, res: Response) => {
     try {
@@ -11,7 +13,7 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Falta el token de Google (googleAccessToken) en el body." });
         }
 
-        // 1. Extraer datos de la vista (Asegúrate de haber corrido el DROP VIEW en pgAdmin)
+        // 1. Extraer datos de la vista
         const metrics: any[] = await prisma.$queryRaw`SELECT * FROM vista_exportacion_metricas;`;
 
         if (!metrics || metrics.length === 0) {
@@ -21,7 +23,6 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         // 2. Serializar con limpieza estricta
         const serializedRows = metrics.map(row => ({
             project_id: Number(row.project_id) || 1,
-            // Forzamos la fecha a YYYY-MM-DD sin errores de zona horaria
             snapshot_date: row.snapshot_date, 
             queryid: String(row.queryid),
             dbid: Number(row.dbid),
@@ -40,7 +41,7 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
             shared_blks_written: Number(row.shared_blks_written) || 0,
             temp_blks_read: Number(row.temp_blks_read) || 0,
             temp_blks_written: Number(row.temp_blks_written) || 0,
-            ingestion_timestamp: row.ingestion_timestamp // Viene como string desde la vista
+            ingestion_timestamp: row.ingestion_timestamp 
         }));
 
         console.log(`[DEBUG] Enviando ${serializedRows.length} filas a BigQuery.`);
@@ -48,24 +49,59 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         // 3. Enviar a BigQuery
         const bqErrors = await insertMetricsToBigQuery(googleAccessToken, serializedRows);
 
-        // 4. Confirmación y Reset
         if (bqErrors && bqErrors.length > 0) {
-            console.error("❌ Errores detallados de BigQuery:", JSON.stringify(bqErrors, null, 2));
+            console.error("Errores detallados de BigQuery:", JSON.stringify(bqErrors, null, 2));
             return res.status(500).json({ 
                 error: "BigQuery rechazó los datos.", 
                 details: bqErrors 
             });
         }
 
-        // Resetear solo si BigQuery aceptó todo
-        await prisma.$executeRaw`SELECT pg_stat_statements_reset();`;
+        // 4. GENERAR ARCHIVO CSV DE RESPALDO (Rúbrica)
+        const projectId = 1;
+        const today = new Date();
+        // Formato YYYYMMDD (Ej: 20260228)
+        const dateString = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        const fileName = `project_${projectId}_${dateString}.csv`;
+        
+        // Sube dos niveles desde 'controllers' para guardar en la raíz del proyecto backend
+        const backupsDir = path.join(__dirname, '../../../backups'); 
+        
+        if (!fs.existsSync(backupsDir)){
+            fs.mkdirSync(backupsDir, { recursive: true });
+        }
+
+        const filePath = path.join(backupsDir, fileName);
+
+        // Construir CSV protegiendo las comas dentro del texto SQL
+        const headers = Object.keys(serializedRows[0]).join(',');
+        const csvRows = serializedRows.map(row => {
+            return Object.values(row).map(value => {
+                const strValue = String(value);
+                // Escapar comillas dobles y envolver el texto para evitar que las comas del SQL rompan las columnas
+                return `"${strValue.replace(/"/g, '""')}"`;
+            }).join(',');
+        });
+        const csvContent = [headers, ...csvRows].join('\n');
+
+        fs.writeFileSync(filePath, csvContent, 'utf8');
+        console.log(`[SUCCESS] Respaldo CSV generado exitosamente en: ${filePath}`);
+
+        // 5. Resetear solo si BigQuery aceptó todo y el CSV se guardó
+        try {
+            await prisma.$queryRawUnsafe('SELECT pg_stat_statements_reset();');
+            console.log('[SUCCESS] Estadísticas de PostgreSQL reseteadas.');
+        } catch (resetError) {
+            console.error('[WARNING] Error al resetear PostgreSQL:', resetError);
+        }
 
         return res.status(200).json({ 
-            message: "Snapshot exportado con éxito. Estadísticas reiniciadas." 
+            message: "Snapshot exportado a BigQuery y respaldado en CSV con éxito. Estadísticas reiniciadas.",
+            backup_file: fileName
         });
 
     } catch (error: any) {
-        console.error("🔥 Error Crítico:", error);
+        console.error("Error Crítico:", error);
         return res.status(500).json({ error: "Error interno", details: error.message });
     }
 };
