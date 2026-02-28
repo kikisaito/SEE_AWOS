@@ -27,6 +27,6 @@ app.use('/api/telemetry', telemetryRoutes);
 
 
 const PORT = process.env.CORE_PORT || 3002;
-app.listen(PORT, () => {
-  console.log(` Core Service corriendo en puerto ${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(` Core Service corriendo en: http://localhost:${PORT}`);
 });

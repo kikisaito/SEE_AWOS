@@ -10,6 +10,6 @@ app.use(express.json());
 app.use('/api/reports', reportRoutes);
 
 const PORT = process.env.REPORT_PORT || 3003;
-app.listen(PORT, () => {
-  console.log(`Report Service corriendo en puerto ${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(` Report Service corriendo en: http://localhost:${PORT}`);
 });

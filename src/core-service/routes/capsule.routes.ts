@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requestUpload, createCapsule, getCapsules, getPresignedUrl } from '../controllers/capsule.controller';
+import { requestUpload, createCapsule, getCapsules, getPresignedUrl, updateCapsule, deleteCapsule } from '../controllers/capsule.controller';
 import { authenticateToken } from '../../shared/middlewares/auth.middleware';
 
 
@@ -13,5 +13,10 @@ router.post('/', authenticateToken, createCapsule);
 router.get('/', authenticateToken, getCapsules);
 
 router.get('/upload-url', authenticateToken, getPresignedUrl);
+
+router.patch('/:id', authenticateToken, updateCapsule);
+
+
+router.delete('/:id', authenticateToken, deleteCapsule);
 
 export default router;
