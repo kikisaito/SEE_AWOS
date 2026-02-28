@@ -161,3 +161,85 @@ export const updateCrisisReflection = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error al guardar reflexión" });
   }
 };
+
+
+export const updateCrisisProgress = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { id } = req.params; 
+    const { breathingExerciseCompleted, usedCapsuleId } = req.body;
+
+    if (!userId) return res.status(401).json({ error: "No autorizado" });
+
+    
+    const existingCrisis = await prisma.crisisSession.findFirst({
+      where: { 
+        crisisId: String(id),
+        userId: userId 
+      }
+    });
+
+    if (!existingCrisis) {
+      return res.status(404).json({ error: "Crisis no encontrada o no te pertenece" });
+    }
+
+  
+    const updatedCrisis = await prisma.crisisSession.update({
+      where: { crisisId: String(id) },
+      data: {
+        ...(breathingExerciseCompleted !== undefined && { breathingExerciseCompleted }),
+        ...(usedCapsuleId !== undefined && { usedCapsuleId })
+      }
+    });
+
+    res.status(200).json({ message: "Progreso de crisis actualizado", crisis: updatedCrisis });
+  } catch (error) {
+    console.error("Error al actualizar progreso:", error);
+    res.status(500).json({ error: "Error interno al actualizar la crisis" });
+  }
+};
+
+
+
+
+export const saveCrisisReflection = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { id } = req.params;
+    const { triggerDesc, location, companion, substanceUse, notes, finalEvaluationId } = req.body;
+
+    if (!userId) return res.status(401).json({ error: "No autorizado" });
+
+    // 1. Verificar si la crisis existe y pertenece al usuario
+    const existingCrisis = await prisma.crisisSession.findFirst({
+      where: { 
+        crisisId: String(id), 
+        userId: userId 
+      }
+    });
+
+    if (!existingCrisis) {
+      return res.status(404).json({ error: "Crisis no encontrada o no te pertenece" });
+    }
+
+    // 2. Actualizar la crisis marcándola como terminada
+    const finishedCrisis = await prisma.crisisSession.update({
+      where: { crisisId: String(id) },
+      data: {
+        triggerDesc,
+        location,
+        companion,
+        substanceUse,
+        notes,
+        finalEvaluationId,
+        isReflectionCompleted: true, // Se marca como completada
+        endedAt: new Date() // Sella la hora exacta en que terminó
+      }
+    });
+
+    res.status(200).json({ message: "Reflexión guardada y crisis finalizada", crisis: finishedCrisis });
+  } catch (error) {
+    console.error("Error al guardar reflexión:", error);
+    res.status(500).json({ error: "Error interno al guardar la reflexión" });
+  }
+};
