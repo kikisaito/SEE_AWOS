@@ -3,7 +3,6 @@ import prisma from '../../shared/config/prisma';
 
 interface AuthRequest extends Request { user?: { userId: string } }
 
-
 export const getVictoryTypes = async (req: Request, res: Response) => {
   const userId = (req as AuthRequest).user?.userId;
   
@@ -11,7 +10,7 @@ export const getVictoryTypes = async (req: Request, res: Response) => {
     where: {
       OR: [
         { userId: null },      
-        { userId: userId }     //capsulas de usuario
+        { userId: userId }     // capsulas de usuario
       ]
     },
     orderBy: { victoryTypeId: 'asc' }
@@ -26,35 +25,15 @@ export const registerVictories = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    const createdVictories = [];
-
-    
-    if (newCustomVictoryName && typeof newCustomVictoryName === 'string') {
-      const customType = await prisma.victoryTypeCatalog.create({
-        data: {
-          name: newCustomVictoryName,
-          userId: userId
-        }
-      });
-      
-      if (!victoryTypeIds) {
-         
-      }
-     
-    }
-
-    //   1. Crear Tipo Personalizado (si hay texto).
-    //   2. Registrar Victorias (con los IDs).
-    
-    
+    // Todo el proceso de base de datos lo metemos en una sola transacción segura
     await prisma.$transaction(async (tx) => {
-      let finalIds = Array.isArray(victoryTypeIds) ? victoryTypeIds : [];
+      let finalIds = Array.isArray(victoryTypeIds) ? [...victoryTypeIds] : [];
 
-      
-      if (newCustomVictoryName) {
+      // 1. Crear o buscar el Tipo Personalizado (si el usuario mandó texto)
+      if (newCustomVictoryName && typeof newCustomVictoryName === 'string') {
         
         const existing = await tx.victoryTypeCatalog.findFirst({
-            where: { name: newCustomVictoryName, userId }
+            where: { name: newCustomVictoryName, userId: userId }
         });
 
         let typeId;
@@ -62,28 +41,32 @@ export const registerVictories = async (req: Request, res: Response) => {
             typeId = existing.victoryTypeId;
         } else {
             const newType = await tx.victoryTypeCatalog.create({
-                data: { name: newCustomVictoryName, userId }
+                data: { name: newCustomVictoryName, userId: userId }
             });
             typeId = newType.victoryTypeId;
         }
+        
+        // Agregamos el ID de esta victoria (nueva o existente) a la lista final
         finalIds.push(typeId);
       }
 
-     
+      // 2. Registrar todas las Victorias (las de catálogo + la personalizada)
       if (finalIds.length > 0) {
         await tx.userVictory.createMany({
           data: finalIds.map((id: number) => ({
-            userId,
+            userId: userId,
             victoryTypeId: Number(id)
           }))
         });
       }
     });
 
-    res.status(201).json({ message: "Victorias registradas con éxito" });
+    // Si la transacción termina sin errores, mandamos el éxito
+    return res.status(201).json({ message: "Victorias registradas con éxito" });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error registrando victorias" });
+    // Aquí cae cualquier error y la terminal de VS Code no explota
+    console.error("Error registrando victorias:", error);
+    return res.status(500).json({ error: "Error registrando victorias" });
   }
 };

@@ -1,4 +1,3 @@
-// prisma/seed.ts
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -6,14 +5,8 @@ const prisma = new PrismaClient()
 async function main() {
   console.log(' Iniciando poblado de datos (Seeding)...')
 
-  const emociones = [
-    'Miedo', 
-    'Ira', 
-    'Tristeza', 
-    'Ansiedad', 
-    'Vacío',
-    'Vergüenza'
-  ]
+  // 1. Catálogo de Emociones
+  const emociones = ['Miedo', 'Ira', 'Tristeza', 'Ansiedad', 'Vacío', 'Vergüenza']
   
   console.log('Creating emotions...')
   for (const nombre of emociones) {
@@ -24,6 +17,7 @@ async function main() {
     })
   }
 
+  // 2. Catálogo de Tipos de Victoria
   const victorias = [
     'Higiene personal',     
     'Alimentación saludable',
@@ -36,20 +30,20 @@ async function main() {
 
   console.log('Creating victory types...')
   for (const nombre of victorias) {
-    await prisma.victoryTypeCatalog.upsert({
-      where: { name: nombre },
-      update: {},
-      create: { name: nombre },
+    // Usamos findFirst en lugar de upsert para evitar el error de la llave compuesta
+    const existe = await prisma.victoryTypeCatalog.findFirst({
+      where: { name: nombre }
     })
+
+    if (!existe) {
+      await prisma.victoryTypeCatalog.create({
+        data: { name: nombre }
+      })
+    }
   }
 
-  // 3. Catálogo de Escala de Evaluación (Post-Crisis)
-  const evaluaciones = [
-    'Mejor',
-    'Un poco mejor', // En tu diseño dice "Un poco", lo estandarizamos aquí
-    'Igual',
-    'Peor' // O "No" según diseño, pero "Peor" es más claro para métricas
-  ]
+  // 3. Catálogo de Escala de Evaluación
+  const evaluaciones = ['Mejor', 'Un poco mejor', 'Igual', 'Peor']
 
   console.log('Creating evaluation scales...')
   for (const desc of evaluaciones) {
