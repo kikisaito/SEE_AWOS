@@ -93,3 +93,52 @@ res.json({
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+
+
+
+
+export const googleLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, preferredName } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Falta email de Google' });
+    }
+
+    
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash: 'google_oauth_no_password', 
+          preferredName: preferredName || 'Usuario de Google',
+        }
+      });
+    }
+
+    
+    const token = generateToken(user.userId);
+
+  
+    res.status(200).json({
+      message: 'Login de Google exitoso',
+      token,
+      user: {
+        id: user.userId,
+        email: user.email,
+        name: user.preferredName,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error crítico en googleLogin:', error);
+    res.status(500).json({ 
+        error: 'Error interno de Google Login',
+        details: String(error)
+    });
+  }
+};

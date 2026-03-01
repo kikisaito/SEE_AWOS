@@ -16,7 +16,7 @@ model User {
   passwordHash    String    @map("password_hash")
   preferredName   String?   @map("preferred_name")
   avatarKey       String?   @map("avatar_key")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   capsules        Capsule[]
   crisisSessions  CrisisSession[]
@@ -37,8 +37,8 @@ model Capsule {
 
   isActive        Boolean   @default(true) @map("is_active")
   usageCount      Int       @default(0) @map("usage_count")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   // RELACIONES
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
@@ -75,8 +75,8 @@ model CrisisSession {
   // Evaluación final ("Mejor", "Igual", "Peor")
   finalEvaluationId Int?    @map("final_evaluation_id")
 
-  startedAt       DateTime  @default(now()) @map("started_at")
-  endedAt         DateTime? @map("ended_at")
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt         DateTime? @map("ended_at") @db.Timestamptz(3)
 
   // Relaciones
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
@@ -90,7 +90,7 @@ model UserVictory {
   victoryId       String    @id @default(uuid()) @map("victory_id")
   userId          String    @map("user_id")
   victoryTypeId   Int       @map("victory_type_id")
-  occurredAt      DateTime  @default(now()) @map("occurred_at")
+  occurredAt      DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
 
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
   victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId])
