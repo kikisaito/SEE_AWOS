@@ -24,6 +24,7 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/s3', s3Routes);
 app.use('/api/telemetry', telemetryRoutes);
+app.use('/api/catalogs', catalogRoutes);
 
 
 
