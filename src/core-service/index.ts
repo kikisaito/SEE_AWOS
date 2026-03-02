@@ -8,6 +8,7 @@ import recommendationRoutes from './routes/recommendation.routes';
 import userRoutes from './routes/user.routes'
 import s3Routes from './routes/s3.routes';
 import telemetryRoutes from './routes/telemetry.routes';
+import catalogRoutes from './routes/catalog.routes';
 
 
 const app = express();
