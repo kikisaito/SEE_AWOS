@@ -7,12 +7,12 @@ interface AuthRequest extends Request {
 }
 
 const formatDate = (date: Date) => new Intl.DateTimeFormat(
-  'es-MX', { day:   '2-digit', month: 'long', year: 'numeric' }).format(date);
+  'es-MX', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
 
 export const generateClinicalReport = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, period } = req.query; 
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
@@ -23,16 +23,29 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     const userName = user?.preferredName || user?.email || "Paciente SEE";
 
-    // 2. Configurar Fechas
-    const end = endDate ? new Date(String(endDate)) : new Date();
-    const start = startDate ? new Date(String(startDate)) : new Date();
-    if (!startDate) start.setDate(end.getDate() - 30);
+    // 2. CONFIGURAR FECHAS (Con soporte para period=week|month|today)
+    let end = endDate ? new Date(String(endDate)) : new Date();
+    let start = startDate ? new Date(String(startDate)) : new Date();
+    
+    if (!startDate && !endDate) {
+        if (period === 'week') {
+            start.setDate(end.getDate() - 7);
+        } else if (period === 'month') {
+            start.setMonth(end.getMonth() - 1);
+        } else if (period === 'today') {
+            start.setHours(0, 0, 0, 0);
+        } else {
+            start.setDate(end.getDate() - 30); 
+        }
+    }
 
     // 3. OBTENER DATOS DE CRISIS
     const crisisHistory = await prisma.crisisSession.findMany({
       where: { userId, startedAt: { gte: start, lte: end } },
       include: { 
-          selectedEmotions: true 
+          selectedEmotions: true, // 🚀 CORREGIDO: Relación implícita de Prisma
+          finalEvaluation: true,  // 🚀 FIX para Tony
+          usedCapsule: true
       },
       orderBy: { startedAt: 'desc' }
     });
@@ -62,14 +75,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         percent: crisisHistory.length > 0 ? ((count / crisisHistory.length) * 100).toFixed(1) : "0"
       }));
 
-
-
-
-
-      
-  
     const crisesWithCapsule = crisisHistory.filter((c: any) => c.usedCapsuleId !== null && c.usedCapsuleId !== undefined).length;
-    
     
     const crisesImproved = crisisHistory.filter((c: any) => { 
         const evalData = c.finalEvaluation;
@@ -78,22 +84,15 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         return desc === 'Mejor' || desc === 'Un poco mejor';
     }).length;
 
-    
+    // --- B. Procesar Victorias ---
     const victoryCounts: Record<string, number> = {};
-    
     victories.forEach((v: any) => { 
       if (v.victoryType && v.victoryType.name) {
-          victoryCounts[v.victoryType.name] = (victoryCounts[v.victoryType.name] || 0) + 1;
+          const cleanName = v.victoryType.name.replace(/\['\s*/g, '').replace(/'\]/g, '').trim();
+          victoryCounts[cleanName] = (victoryCounts[cleanName] || 0) + 1;
       }
     });
     const sortedVictories = Object.entries(victoryCounts).sort(([,a], [,b]) => b - a);
-
-
-
-
-
-
-
 
     // --- CONFIGURACIÓN DEL ARCHIVO PDF ---
     res.setHeader('Content-Type', 'application/pdf');
@@ -102,9 +101,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     doc.pipe(res);
     
-
-
-
     // --- ENCABEZADO TIPO "TERMINAL" ---
     doc.fontSize(18).font('Courier-Bold').text('INFORME GENERADO POR SEE/AWOS');
     doc.fontSize(10).font('Courier').text('============================================================');
@@ -113,12 +109,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.text(`GENERADO: ${new Date().toLocaleString()}`);
     doc.text('============================================================');
     doc.moveDown();
-
-
-
-
-
-
 
     // --- SECCIÓN 1: RESUMEN GENERAL ---
     doc.fontSize(14).font('Courier-Bold').text('[1] RESUMEN GENERAL');
@@ -139,10 +129,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
       doc.text(`  - ${e.name.padEnd(15)}: ${e.count} eventos (${e.percent}%)`);
     });
     doc.moveDown();
-
-
-
-
 
     // --- SECCIÓN 2: EFECTIVIDAD ---
     doc.fontSize(14).font('Courier-Bold').text('[2] EFECTIVIDAD DE ESTRATEGIAS');
@@ -171,14 +157,6 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
-
-
-
-
-
-
-
-
     // --- SECCIÓN 4: BITÁCORA DETALLADA ---
     doc.fontSize(14).font('Courier-Bold').text('[4] DETALLE CRONOLÓGICO');
     doc.text('------------------------------------------------------------');
@@ -190,24 +168,21 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         doc.fontSize(10).font('Courier-Bold').text(`${formatDate(new Date(crisis.startedAt))}`);
         doc.font('Courier').fontSize(9);
         
-        const finalEval = typeof crisis.finalEvaluation === 'string' ? crisis.finalEvaluation : (crisis.finalEvaluation?.description || 'N/A');
+        const finalEval = typeof crisis.finalEvaluation === 'string' 
+          ? crisis.finalEvaluation 
+          : (crisis.finalEvaluation?.description || 'N/A');
 
         doc.text(`   Intensidad: ${crisis.intensityLevel || 'N/A'}/10 | Estado Final: ${finalEval}`);
         
         if (crisis.selectedEmotions && Array.isArray(crisis.selectedEmotions)) {
-           doc.text(`   Emociones:  ${crisis.selectedEmotions.map((e: any) => e.name).join(', ')}`);
+            const emNames = crisis.selectedEmotions.map((e: any) => e.name).filter(Boolean).join(', ');
+           doc.text(`   Emociones:  ${emNames}`);
         }
         
         if (crisis.triggerDesc) doc.text(`   Detonante:  "${crisis.triggerDesc}"`);
         if (crisis.notes) doc.text(`   Notas:      "${crisis.notes}"`);
         doc.moveDown(0.5);
     });
-
-
-
-
-
-
 
     doc.fontSize(8).text(
       '\n\nAVISO: Este reporte es una herramienta complementaria y no sustituye el juicio clínico profesional.',
