@@ -2,7 +2,7 @@ import { BigQuery } from '@google-cloud/bigquery';
 import { OAuth2Client } from 'google-auth-library';
 
 export const insertMetricsToBigQuery = async (accessToken: string, rows: any[]) => {
-    // 1. Configuramos las credenciales usando el token que nos pasó el Frontend
+ 
     const client = new OAuth2Client();
     client.setCredentials({ access_token: accessToken });
 

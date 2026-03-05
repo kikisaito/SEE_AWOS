@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
 import prisma from '../../shared/config/prisma'; 
-import { generateUploadUrl } from '../../shared/s3.service';
+import { generateUploadUrl, deleteFileFromS3 } from '../../shared/s3.service';
+
 
 interface AuthRequest extends Request {
   user?: {
@@ -24,7 +25,7 @@ export const getPresignedUrl = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Faltan parámetros: fileName y fileType son requeridos" });
     }
 
-    // Llamamos al servicio S3
+    
     const { uploadUrl, key } = await generateUploadUrl(
       userId, 
       String(fileName), 
@@ -156,7 +157,7 @@ export const getCapsules = async (req: Request, res: Response) => {
 
 
 
-// --- EDITAR CÁPSULA (PUT/PATCH) ---
+
 export const updateCapsule = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
@@ -165,10 +166,10 @@ export const updateCapsule = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // 1. Verificar que la cápsula existe y pertenece al usuario
+  
     const existingCapsule = await prisma.capsule.findFirst({
       where: { 
-        capsuleId: String(id), // <-- ¡Escudo de TypeScript activado!
+        capsuleId: String(id), 
         userId: userId 
       }
     });
@@ -177,21 +178,21 @@ export const updateCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-    // 2. Actualizar la cápsula
+    
     const updatedCapsule = await prisma.capsule.update({
       where: { 
-        capsuleId: String(id) // <-- ¡Escudo activado!
+        capsuleId: String(id) 
       },
       data: {
         title,
         contentType,
         contentText: contentType === 'TEXT' ? contentText : null,
         s3Key: contentType === 'AUDIO' ? s3Key : null,
-        // Si mandan nuevas emociones, actualizamos las relaciones
+       
         ...(emotionIds && {
           targetEmotions: {
             set: [], // Limpia las emociones anteriores
-            connect: emotionIds.map((emotionId: number) => ({ emotionId })) // Conecta las nuevas
+            connect: emotionIds.map((emotionId: number) => ({ emotionId })) 
           }
         })
       },
@@ -218,7 +219,7 @@ export const deleteCapsule = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-  
+    // PASO 1: Buscar la cápsula para saber si existe y si tiene un archivo en S3
     const existingCapsule = await prisma.capsule.findFirst({
       where: { 
         capsuleId: String(id), 
@@ -230,14 +231,24 @@ export const deleteCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-    // 2. Eliminar la cápsula
+    // PASO 2: Si es un audio y tiene una llave de S3, disparar a Amazon primero
+    if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
+        try {
+            await deleteFileFromS3(existingCapsule.s3Key);
+        } catch (s3Error) {
+            // Si S3 falla, detenemos todo. No borramos la base de datos para no perder el rastro.
+            return res.status(500).json({ error: "Error al eliminar el archivo físico de la nube" });
+        }
+    }
+
+    // PASO 3: Destruir el registro en PostgreSQL
     await prisma.capsule.delete({
       where: { 
         capsuleId: String(id) 
       }
     });
 
-    res.status(200).json({ message: "Cápsula eliminada correctamente" });
+    res.status(200).json({ message: "Cápsula y archivo eliminados correctamente" });
   } catch (error) {
     console.error("Error al eliminar cápsula:", error);
     res.status(500).json({ error: "Error interno al eliminar la cápsula" });

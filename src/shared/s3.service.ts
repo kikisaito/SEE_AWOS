@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_BUCKET_NAME) {
   console.warn(" ADVERTENCIA: Credenciales de AWS no configuradas completamente.");
@@ -31,5 +32,22 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
   } catch (error) {
     console.error("Error detallado en S3 Service:", error);
     throw new Error("No se pudo generar la URL de carga. Revisa tus credenciales AWS.");
+  }
+};
+
+
+
+export const deleteFileFromS3 = async (s3Key: string) => {
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME, 
+      Key: s3Key,
+    });
+    
+    await s3Client.send(command);
+    console.log(` Archivo eliminado de S3: ${s3Key}`);
+  } catch (error) {
+    console.error(" Error al borrar archivo de S3:", error);
+    throw new Error("No se pudo eliminar el archivo físico de la nube");
   }
 };
