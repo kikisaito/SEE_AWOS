@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
 import prisma from '../../shared/config/prisma'; 
-import { generateUploadUrl, deleteFileFromS3 } from '../../shared/s3.service';
+import { generateUploadUrl, deleteFileFromS3, getDownloadUrl } from '../../shared/s3.service';
 
 
 interface AuthRequest extends Request {
@@ -129,24 +129,34 @@ export const getCapsules = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Usuario no autenticado" });
     }
 
-   
+    // Obtenemos las cápsulas de la base de datos
     const capsules = await prisma.capsule.findMany({
-      where: {
-        userId: userId 
-      },
-      orderBy: {
-        createdAt: 'desc' 
-      },
-      
-      include: {
-        targetEmotions: true 
-      }
+      where: { userId: userId },
+      orderBy: { createdAt: 'desc' },
+      include: { targetEmotions: true }
     });
+
+    // MAGIA DE ARQUITECTO: Mapeamos las cápsulas para inyectarles la URL firmada
+    const capsulesWithUrls = await Promise.all(
+      capsules.map(async (capsule) => {
+        let audioUrl = null;
+
+        // Si es de tipo AUDIO y tiene un s3Key, vamos a AWS por su Pase VIP de 1 hora
+        if (capsule.contentType === 'AUDIO' && capsule.s3Key) {
+          audioUrl = await getDownloadUrl(capsule.s3Key);
+        }
+
+        return {
+          ...capsule,
+          audioUrl // Tony recibirá este campo exacto que pidió
+        };
+      })
+    );
 
     res.json({
       message: "Cápsulas recuperadas exitosamente",
-      count: capsules.length,
-      capsules: capsules
+      count: capsulesWithUrls.length,
+      capsules: capsulesWithUrls // Enviamos el arreglo con las URLs ya inyectadas
     });
 
   } catch (error) {
@@ -154,7 +164,6 @@ export const getCapsules = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno al obtener las cápsulas" });
   }
 };
-
 
 
 
