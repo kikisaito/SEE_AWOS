@@ -175,7 +175,6 @@ export const updateCapsule = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // 1. Verificamos que la cápsula exista y sea del usuario
     const existingCapsule = await prisma.capsule.findFirst({
       where: { capsuleId: String(id), userId: userId }
     });
@@ -184,28 +183,40 @@ export const updateCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-    // 2. Construimos un objeto de datos dinámico (Solo metemos lo que Tony nos manda)
+    // 🚀 NUEVO: OPERACIÓN DE LIMPIEZA S3 (NIVEL SENIOR)
+    // Si la cápsula ya tenía un audio guardado...
+    if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
+      // Y Tony nos dice que ahora será TEXTO, o nos manda un s3Key NUEVO...
+      if (contentType === 'TEXT' || (s3Key && s3Key !== existingCapsule.s3Key)) {
+        try {
+          // Borramos el audio viejo de Amazon para no tener basura en la nube
+          await deleteFileFromS3(existingCapsule.s3Key);
+          console.log("🗑️ Audio viejo eliminado por actualización");
+        } catch (error) {
+          console.error("Aviso: No se pudo borrar el audio viejo de S3");
+        }
+      }
+    }
+
+    // Construimos los datos dinámicos a actualizar
     const dataToUpdate: any = {};
     
     if (title !== undefined) dataToUpdate.title = title;
     
-    // Si Tony manda un cambio de tipo de contenido, limpiamos el opuesto
     if (contentType !== undefined) {
       dataToUpdate.contentType = contentType;
       if (contentType === 'TEXT') {
         dataToUpdate.contentText = contentText;
-        dataToUpdate.s3Key = null; // Borramos llave de audio si pasa a texto
+        dataToUpdate.s3Key = null; 
       } else if (contentType === 'AUDIO') {
         dataToUpdate.s3Key = s3Key;
-        dataToUpdate.contentText = null; // Borramos texto si pasa a audio
+        dataToUpdate.contentText = null; 
       }
     } else {
-      // Si no manda contentType, actualizamos solo lo que mande sin borrar lo demás
       if (contentText !== undefined) dataToUpdate.contentText = contentText;
       if (s3Key !== undefined) dataToUpdate.s3Key = s3Key;
     }
 
-    // Si manda emociones, las reconectamos
     if (emotionIds) {
       dataToUpdate.targetEmotions = {
         set: [], 
@@ -213,21 +224,18 @@ export const updateCapsule = async (req: Request, res: Response) => {
       };
     }
 
-    // 3. Ejecutamos el COMMIT en la base de datos
     const updatedCapsule = await prisma.capsule.update({
       where: { capsuleId: String(id) },
       data: dataToUpdate,
       include: { targetEmotions: true }
     });
 
-    // 4. EL TOQUE MAESTRO: Si es audio, le devolvemos su Pase VIP de lectura
+    // Inyectamos el Pase VIP actualizado
     let audioUrl = null;
     if (updatedCapsule.contentType === 'AUDIO' && updatedCapsule.s3Key) {
-      // Asumiendo que ya tienes getDownloadUrl importado arriba
       audioUrl = await getDownloadUrl(updatedCapsule.s3Key); 
     }
 
-    // 5. Devolvemos la cápsula completa (cumpliendo el contrato REST)
     res.status(200).json({ 
       message: "Cápsula actualizada con éxito", 
       capsule: { ...updatedCapsule, audioUrl } 
