@@ -168,6 +168,9 @@ export const updateCrisisReflection = async (req: Request, res: Response) => {
 
 export const updateCrisisProgress = async (req: Request, res: Response) => {
   try {
+    console.log("=== DEBUG TONY: BODY RECIBIDO EN /progress ===");
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log("===============================================");
     const userId = (req as any).user?.userId;
     const { id } = req.params; 
     
