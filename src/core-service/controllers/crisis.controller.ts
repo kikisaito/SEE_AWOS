@@ -163,33 +163,48 @@ export const updateCrisisReflection = async (req: Request, res: Response) => {
 };
 
 
+
+
+
 export const updateCrisisProgress = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
     const { id } = req.params; 
-    const { breathingExerciseCompleted, usedCapsuleId } = req.body;
+    
+    // 🚀 Capturamos TODOS los datos que Tony dice estar enviando
+    const { 
+        breathingExerciseCompleted, 
+        usedCapsuleId, 
+        finalEvaluationId 
+    } = req.body;
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    
     const existingCrisis = await prisma.crisisSession.findFirst({
-      where: { 
-        crisisId: String(id),
-        userId: userId 
-      }
+      where: { crisisId: String(id), userId: userId }
     });
 
     if (!existingCrisis) {
       return res.status(404).json({ error: "Crisis no encontrada o no te pertenece" });
     }
 
-  
+    // 🚀 Objeto de datos dinámico a prueba de balas
+    const dataToUpdate: any = {};
+    
+    if (breathingExerciseCompleted !== undefined) {
+        dataToUpdate.breathingExerciseCompleted = breathingExerciseCompleted;
+    }
+    if (usedCapsuleId !== undefined) {
+        dataToUpdate.usedCapsuleId = usedCapsuleId;
+    }
+    // Si Tony manda la evaluación por aquí, la atrapamos también
+    if (finalEvaluationId !== undefined) {
+        dataToUpdate.finalEvaluationId = Number(finalEvaluationId);
+    }
+
     const updatedCrisis = await prisma.crisisSession.update({
       where: { crisisId: String(id) },
-      data: {
-        ...(breathingExerciseCompleted !== undefined && { breathingExerciseCompleted }),
-        ...(usedCapsuleId !== undefined && { usedCapsuleId })
-      }
+      data: dataToUpdate
     });
 
     res.status(200).json({ message: "Progreso de crisis actualizado", crisis: updatedCrisis });
@@ -198,6 +213,8 @@ export const updateCrisisProgress = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno al actualizar la crisis" });
   }
 };
+
+
 
 
 
