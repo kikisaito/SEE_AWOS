@@ -9,11 +9,27 @@ import userRoutes from './routes/user.routes'
 import s3Routes from './routes/s3.routes';
 import telemetryRoutes from './routes/telemetry.routes';
 import catalogRoutes from './routes/catalog.routes';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
 
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.set('trust proxy', 1);
+app.use(helmet());
+
+
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 150, // Límite de 150 peticiones por IP
+    standardHeaders: true, 
+    legacyHeaders: false,
+    message: { error: "Se detectó tráfico inusual desde tu conexión. Por seguridad, espera 15 minutos." }
+});
+app.use(globalLimiter);
+
 
 // Dominio: Funcionalidad Principal
 app.use('/api/crisis', crisisRoutes);
