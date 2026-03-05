@@ -183,13 +183,12 @@ export const updateCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-    // 🚀 NUEVO: OPERACIÓN DE LIMPIEZA S3 (NIVEL SENIOR)
-    // Si la cápsula ya tenía un audio guardado...
+  
     if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
-      // Y Tony nos dice que ahora será TEXTO, o nos manda un s3Key NUEVO...
+      
       if (contentType === 'TEXT' || (s3Key && s3Key !== existingCapsule.s3Key)) {
         try {
-          // Borramos el audio viejo de Amazon para no tener basura en la nube
+          
           await deleteFileFromS3(existingCapsule.s3Key);
           console.log("🗑️ Audio viejo eliminado por actualización");
         } catch (error) {
@@ -198,7 +197,7 @@ export const updateCapsule = async (req: Request, res: Response) => {
       }
     }
 
-    // Construimos los datos dinámicos a actualizar
+    
     const dataToUpdate: any = {};
     
     if (title !== undefined) dataToUpdate.title = title;
@@ -230,7 +229,7 @@ export const updateCapsule = async (req: Request, res: Response) => {
       include: { targetEmotions: true }
     });
 
-    // Inyectamos el Pase VIP actualizado
+
     let audioUrl = null;
     if (updatedCapsule.contentType === 'AUDIO' && updatedCapsule.s3Key) {
       audioUrl = await getDownloadUrl(updatedCapsule.s3Key); 

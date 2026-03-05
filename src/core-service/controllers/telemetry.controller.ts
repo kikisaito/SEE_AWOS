@@ -13,15 +13,18 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Falta el token de Google (googleAccessToken) en el body." });
         }
 
-       
         const metrics: any[] = await prisma.$queryRaw`SELECT * FROM vista_exportacion_metricas;`;
 
         if (!metrics || metrics.length === 0) {
             return res.status(400).json({ message: "No hay métricas acumuladas para exportar. Genera tráfico en la app primero." });
         }
 
+    
+        const myProjectId = Number(process.env.TEAM_PROJECT_ID) || 6;
+
         const serializedRows = metrics.map(row => ({
-            project_id: Number(row.project_id) || 6, 
+           
+            project_id: myProjectId, 
             snapshot_date: row.snapshot_date, 
             queryid: String(row.queryid),
             dbid: Number(row.dbid),
@@ -43,9 +46,8 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
             ingestion_timestamp: row.ingestion_timestamp 
         }));
 
-        console.log(`[DEBUG] Enviando ${serializedRows.length} filas a BigQuery.`);
+        console.log(`[DEBUG] Enviando ${serializedRows.length} filas a BigQuery bajo el proyecto ${myProjectId}.`);
 
-        
         const bqErrors = await insertMetricsToBigQuery(googleAccessToken, serializedRows);
 
         if (bqErrors && bqErrors.length > 0) {
@@ -57,12 +59,9 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         }
 
         
-        const projectId = 6;
         const today = new Date();
-       
         const dateString = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-        const fileName = `project_${projectId}_${dateString}.csv`;
-        
+        const fileName = `project_${myProjectId}_${dateString}.csv`;
         
         const backupsDir = path.join(__dirname, '../../../backups'); 
         
@@ -72,12 +71,10 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
 
         const filePath = path.join(backupsDir, fileName);
 
-        
         const headers = Object.keys(serializedRows[0]).join(',');
         const csvRows = serializedRows.map(row => {
             return Object.values(row).map(value => {
                 const strValue = String(value);
-               
                 return `"${strValue.replace(/"/g, '""')}"`;
             }).join(',');
         });
@@ -86,7 +83,7 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         fs.writeFileSync(filePath, csvContent, 'utf8');
         console.log(`[SUCCESS] Respaldo CSV generado exitosamente en: ${filePath}`);
 
-        // 5. Resetear solo si BigQuery aceptó todo y el CSV se guardó
+      
         try {
             await prisma.$queryRawUnsafe('SELECT pg_stat_statements_reset();');
             console.log('[SUCCESS] Estadísticas de PostgreSQL reseteadas.');
