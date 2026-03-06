@@ -166,7 +166,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
-   crisisHistory.forEach((crisis: any) => {
+    // --- SECCIÓN 4: BITÁCORA DETALLADA (EL TÍTULO QUE FALTABA) ---
+    doc.fontSize(14).font('Courier-Bold').text('[4] DETALLE CRONOLÓGICO');
+    doc.text('------------------------------------------------------------');
+    doc.moveDown(0.5);
+
+    crisisHistory.forEach((crisis: any) => {
         if (doc.y > 700) doc.addPage(); 
 
         doc.fontSize(10).font('Courier-Bold').text(`${formatDate(new Date(crisis.startedAt))}`);
@@ -189,12 +194,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         if (crisis.triggerDesc)  doc.text(`   Detonante:  "${crisis.triggerDesc}"`);
         if (crisis.notes)        doc.text(`   Notas:      "${crisis.notes}"`);
         
-            doc.moveDown(0.5);
-        });
+        doc.moveDown(0.5);
+    });
     
-        doc.end();
-      } catch (error) {
-        console.error("Error generating report:", error);
-        res.status(500).json({ error: "Error generating report" });
-      }
-    };
+    doc.end();
+  } catch (error) {
+    console.error("Error generating report:", error);
+    res.status(500).json({ error: "Error generating report" });
+  }
+};
