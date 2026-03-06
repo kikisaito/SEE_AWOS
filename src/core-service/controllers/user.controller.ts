@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../../shared/config/prisma'; 
+import { deleteFileFromS3 } from '../../shared/s3.service';
+
 interface AuthRequest extends Request {
   user?: { userId: string };
 }
@@ -37,12 +39,35 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
+    // 1. Buscamos al usuario actual para ver si ya tiene una foto
+    const currentUser = await prisma.user.findUnique({
+      where: { userId },
+      select: { avatarKey: true }
+    });
+
+    // 2. Limpieza de S3: Si tiene foto vieja, y Tony mandó borrarla ("") o cambiarla por una nueva, eliminamos la anterior
+    if (currentUser?.avatarKey && currentUser.avatarKey !== avatarKey) {
+      try {
+        await deleteFileFromS3(currentUser.avatarKey);
+      } catch (s3Error) {
+        console.warn("Aviso: No se pudo borrar la foto antigua de S3, continuando...", s3Error);
+      }
+    }
+
+    // 3. Construimos el objeto de actualización a prueba de balas
+    const dataToUpdate: any = {};
+    if (preferredName !== undefined) dataToUpdate.preferredName = preferredName;
+    
+    // Si Tony manda "" o null, limpiamos la base de datos
+    if (avatarKey === "" || avatarKey === null) {
+      dataToUpdate.avatarKey = null;
+    } else if (avatarKey !== undefined) {
+      dataToUpdate.avatarKey = avatarKey;
+    }
+
     const updatedUser = await prisma.user.update({
       where: { userId },
-      data: {
-        preferredName,
-        avatarKey //Tony aqui se guarda el archivo s3 en el campo avatarKey, que es un string con el nombre del archivo en S3. El frontend usará ese nombre para construir la URL de la imagen.
-      },
+      data: dataToUpdate,
       select: { preferredName: true, avatarKey: true }
     });
 
