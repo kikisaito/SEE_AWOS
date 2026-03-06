@@ -19,9 +19,13 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     // 1. OBTENER EL NOMBRE REAL DEL USUARIO
     const user = await prisma.user.findUnique({
         where: { userId },
-        select: { preferredName: true, email: true }
+        // 🚨 IMPORTANTE: Pedimos el createdAt de la base de datos
+        select: { preferredName: true, email: true, createdAt: true } 
     });
     const userName = user?.preferredName || user?.email || "Paciente SEE";
+    
+    // 🚨 ESTA ES LA LÍNEA QUE TE FALTABA EN VS CODE:
+    const accountCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
 
     // 2. CONFIGURAR FECHAS (Con soporte para period=week|month|today)
     let end = endDate ? new Date(String(endDate)) : new Date();
@@ -38,6 +42,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
             start.setDate(end.getDate() - 30); 
         }
     }
+
+    // 🚀 El Candado del Piso (ahora sí funcionará porque accountCreatedAt ya existe)
+    if (start < accountCreatedAt) {
+        start = accountCreatedAt;
+    }
+    
 
     // 3. OBTENER DATOS DE CRISIS
    const crisisHistory = await prisma.crisisSession.findMany({
