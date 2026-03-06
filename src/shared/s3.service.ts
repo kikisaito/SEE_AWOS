@@ -31,8 +31,11 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
   });
 
   try {
-    // Al poner el ACL dentro del command, getSignedUrl lo incluirá en la firma
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+    const uploadUrl = await getSignedUrl(s3Client, command, { 
+        expiresIn: 300,
+        signableHeaders: new Set(['x-amz-acl']) 
+    });
+    
     return { uploadUrl, key }; 
   } catch (error) {
     console.error("Error detallado en S3 Service:", error);
