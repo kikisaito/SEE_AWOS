@@ -24,11 +24,11 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
     Bucket: process.env.AWS_BUCKET_NAME,
     Key: key,
     ContentType: fileType, 
-    ACL: 'public-read',
+    ACL: 'public-read', 
   });
 
   try {
-    
+  
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
     return { uploadUrl, key }; 
   } catch (error) {
