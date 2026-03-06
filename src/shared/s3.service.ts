@@ -16,6 +16,9 @@ const s3Client = new S3Client({
   },
 });
 
+
+
+
 export const generateUploadUrl = async (userId: string, fileName: string, fileType: string) => {
   const cleanFileName = fileName.replace(/\s+/g, '-');
   const key = `users/${userId}/${Date.now()}-${cleanFileName}`;
@@ -28,14 +31,17 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
   });
 
   try {
-  
+    // Al poner el ACL dentro del command, getSignedUrl lo incluirá en la firma
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
     return { uploadUrl, key }; 
   } catch (error) {
     console.error("Error detallado en S3 Service:", error);
-    throw new Error("No se pudo generar la URL de carga. Revisa tus credenciales AWS.");
+    throw new Error("No se pudo generar la URL de carga.");
   }
 };
+
+
+
 
 
 
