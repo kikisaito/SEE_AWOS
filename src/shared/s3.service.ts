@@ -27,7 +27,6 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
     Bucket: process.env.AWS_BUCKET_NAME,
     Key: key,
     ContentType: fileType, 
-    ACL: 'public-read', 
   });
 
   try {
