@@ -40,11 +40,15 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     }
 
     // 3. OBTENER DATOS DE CRISIS
-    const crisisHistory = await prisma.crisisSession.findMany({
-      where: { userId, startedAt: { gte: start, lte: end } },
+   const crisisHistory = await prisma.crisisSession.findMany({
+      where: { 
+          userId, 
+          startedAt: { gte: start, lte: end },
+          isReflectionCompleted: true // 🚀 EL CANDADO: Ignora las crisis abandonadas a medias
+      },
       include: { 
-          selectedEmotions: true, // 🚀 CORREGIDO: Relación implícita de Prisma
-          finalEvaluation: true,  // 🚀 FIX para Tony
+          selectedEmotions: true, 
+          finalEvaluation: true,  
           usedCapsule: true
       },
       orderBy: { startedAt: 'desc' }
