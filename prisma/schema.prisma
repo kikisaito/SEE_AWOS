@@ -92,7 +92,8 @@ model UserVictory {
   occurredAt      DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
 
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId])
+  // 🚨 AQUÍ ESTÁ EL FIX: Agregamos el onDelete: Cascade
+  victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId], onDelete: Cascade)
 
   @@map("user_victories")
 }
