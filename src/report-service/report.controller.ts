@@ -134,6 +134,11 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
+
+
+
+
+
     // --- SECCIÓN 2: EFECTIVIDAD ---
     doc.fontSize(14).font('Courier-Bold').text('[2] EFECTIVIDAD DE ESTRATEGIAS');
     doc.moveDown(0.5);
@@ -161,12 +166,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
-    // --- SECCIÓN 4: BITÁCORA DETALLADA ---
-    doc.fontSize(14).font('Courier-Bold').text('[4] DETALLE CRONOLÓGICO');
-    doc.text('------------------------------------------------------------');
-    doc.moveDown(0.5);
-    
-    crisisHistory.forEach((crisis: any) => {
+   crisisHistory.forEach((crisis: any) => {
         if (doc.y > 700) doc.addPage(); 
 
         doc.fontSize(10).font('Courier-Bold').text(`${formatDate(new Date(crisis.startedAt))}`);
@@ -183,20 +183,18 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
            doc.text(`   Emociones:  ${emNames}`);
         }
         
-        if (crisis.triggerDesc) doc.text(`   Detonante:  "${crisis.triggerDesc}"`);
-        if (crisis.notes) doc.text(`   Notas:      "${crisis.notes}"`);
-        doc.moveDown(0.5);
-    });
-
-    doc.fontSize(8).text(
-      '\n\nAVISO: Este reporte es una herramienta complementaria y no sustituye el juicio clínico profesional.',
-      { align: 'center' }
-    );
-
-    doc.end();
-
-  } catch (error) {
-    console.error("Error reporte:", error);
-    if (!res.headersSent) res.status(500).json({ error: "Error generando reporte" });
-  }
-};
+        if (crisis.location)     doc.text(`   Lugar:      ${crisis.location}`);
+        if (crisis.companion)    doc.text(`   Compañía:   ${crisis.companion}`);
+        if (crisis.substanceUse) doc.text(`   Sustancias: ${crisis.substanceUse}`);
+        if (crisis.triggerDesc)  doc.text(`   Detonante:  "${crisis.triggerDesc}"`);
+        if (crisis.notes)        doc.text(`   Notas:      "${crisis.notes}"`);
+        
+            doc.moveDown(0.5);
+        });
+    
+        doc.end();
+      } catch (error) {
+        console.error("Error generating report:", error);
+        res.status(500).json({ error: "Error generating report" });
+      }
+    };
