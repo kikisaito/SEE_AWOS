@@ -10,7 +10,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 app.use(helmet());
 
-/*
+
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 15, // Límite de 150 peticiones por IP
@@ -18,7 +18,7 @@ const globalLimiter = rateLimit({
     legacyHeaders: false,
     message: { error: "Se detectó tráfico inusual desde tu conexión. Por seguridad, espera 15 minutos." }
 });
-*/
+
 
 app.use('/api/auth', authRoutes);
 

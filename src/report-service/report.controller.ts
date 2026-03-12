@@ -127,7 +127,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
 
     // --- CONFIGURACIÓN DEL ARCHIVO PDF ---
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=SEE_Reporte_${userName.replace(/\s+/g, '_')}.pdf`);
+    res.setHeader('Content-Disposition', 'attachment; filename="Reporte_Clinico.pdf"');
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     doc.pipe(res);
