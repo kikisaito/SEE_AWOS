@@ -19,6 +19,7 @@ const globalLimiter = rateLimit({
     message: { error: "Se detectó tráfico inusual desde tu conexión. Por seguridad, espera 15 minutos." }
 });
 */
+
 app.use('/api/auth', authRoutes);
 
 const PORT = process.env.AUTH_PORT || 3001;

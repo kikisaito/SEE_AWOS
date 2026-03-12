@@ -267,7 +267,7 @@ export const deleteCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-  
+  //compensatoria
     if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
         try {
             await deleteFileFromS3(existingCapsule.s3Key);
