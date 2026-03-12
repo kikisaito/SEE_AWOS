@@ -74,7 +74,7 @@ export const getDownloadUrl = async (s3Key: string): Promise<string> => {
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
     return signedUrl;
   } catch (error) {
-    console.error("❌ Error al generar URL de lectura de S3:", error);
+    console.error(" Error al generar URL de lectura de S3:", error);
     throw new Error("No se pudo generar el enlace de audio");
   }
 };

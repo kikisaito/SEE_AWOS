@@ -1,4 +1,4 @@
-// 1. Configuración
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +7,12 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+
+
+
+
 
 // --- TABLAS PRINCIPALES ---
 
@@ -26,6 +32,15 @@ model User {
   @@map("users")
 }
 
+
+
+
+
+
+
+
+
+
 model Capsule {
   capsuleId       String    @id @default(uuid()) @map("capsule_id")
   userId          String    @map("user_id")
@@ -39,17 +54,28 @@ model Capsule {
   usageCount      Int       @default(0) @map("usage_count")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  // RELACIONES
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  
-  // CAMBIO CRÍTICO: Una cápsula puede servir para MUCHAS emociones
   targetEmotions  EmotionCatalog[] @relation("CapsuleEmotions")
   
   usedInCrisis    CrisisSession[]
 
   @@map("capsules")
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 model CrisisSession {
   crisisId        String    @id @default(uuid()) @map("crisis_id")
@@ -58,10 +84,10 @@ model CrisisSession {
   
   selectedEmotions EmotionCatalog[] @relation("CrisisEmotions")
   intensityLevel  Int       @default(5) @map("intensity_level") 
-  triggerDesc     String?   @map("trigger_description") @db.Text // "¿Qué pasó antes?"
-  location        String?   @map("location") @db.VarChar(100)    // "Casa", "Trabajo", "Otro: Parque"
-  companion       String?   @map("companion") @db.VarChar(100)   // "Solo/a", "Familia", "Otro: Novio"
-  substanceUse    String?   @map("substance_use") @db.VarChar(50)// "No", "Si - Alcohol", etc.
+  triggerDesc     String?   @map("trigger_description") @db.Text 
+  location        String?   @map("location") @db.VarChar(100)    
+  companion       String?   @map("companion") @db.VarChar(100)   
+  substanceUse    String?   @map("substance_use") @db.VarChar(50)
   notes           String?   @db.Text
   
   
@@ -85,6 +111,26 @@ model CrisisSession {
   @@map("crisis_sessions")
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 model UserVictory {
   victoryId       String    @id @default(uuid()) @map("victory_id")
   userId          String    @map("user_id")
@@ -92,11 +138,25 @@ model UserVictory {
   occurredAt      DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
 
   user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  // 🚨 AQUÍ ESTÁ EL FIX: Agregamos el onDelete: Cascade
   victoryType     VictoryTypeCatalog @relation(fields: [victoryTypeId], references: [victoryTypeId], onDelete: Cascade)
 
   @@map("user_victories")
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // --- CATÁLOGOS ---
 
@@ -111,11 +171,23 @@ model EmotionCatalog {
   @@map("emotions_catalog")
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 model VictoryTypeCatalog {
   victoryTypeId   Int       @id @default(autoincrement()) @map("victory_type_id")
-  name            String    @db.VarChar(50) // Quitamos @unique global porque dos usuarios pueden crear "Jugar Xbox"
-  
-  // NUEVO: Para saber si es global o privada de un usuario
+  name            String    @db.VarChar(50) 
   userId          String?   @map("user_id") 
   user            User?     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
@@ -125,6 +197,18 @@ model VictoryTypeCatalog {
   @@unique([name, userId]) 
   @@map("victory_types_catalog")
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 model EvaluationScaleCatalog {
   evaluationId    Int       @id @default(autoincrement()) @map("evaluation_id")

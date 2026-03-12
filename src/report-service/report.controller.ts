@@ -16,15 +16,18 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
+
+
+
+
     // 1. OBTENER EL NOMBRE REAL DEL USUARIO
     const user = await prisma.user.findUnique({
         where: { userId },
-        // 🚨 IMPORTANTE: Pedimos el createdAt de la base de datos
         select: { preferredName: true, email: true, createdAt: true } 
     });
     const userName = user?.preferredName || user?.email || "Paciente SEE";
     
-    // 🚨 ESTA ES LA LÍNEA QUE TE FALTABA EN VS CODE:
+    
     const accountCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
 
     // 2. CONFIGURAR FECHAS (Con soporte para period=week|month|today)
@@ -43,7 +46,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         }
     }
 
-    // 🚀 El Candado del Piso (ahora sí funcionará porque accountCreatedAt ya existe)
+   
     if (start < accountCreatedAt) {
         start = accountCreatedAt;
     }
@@ -54,7 +57,7 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
       where: { 
           userId, 
           startedAt: { gte: start, lte: end },
-          isReflectionCompleted: true // 🚀 EL CANDADO: Ignora las crisis abandonadas a medias
+          isReflectionCompleted: true 
       },
       include: { 
           selectedEmotions: true, 
@@ -81,6 +84,9 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
       }
     });
 
+
+
+
     const sortedEmotions = Object.entries(emotionCounts)
       .sort(([,a], [,b]) => b - a)
       .map(([name, count]) => ({
@@ -98,6 +104,11 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
         return desc === 'Mejor' || desc === 'Un poco mejor';
     }).length;
 
+
+
+
+
+
     // --- B. Procesar Victorias ---
     const victoryCounts: Record<string, number> = {};
     victories.forEach((v: any) => { 
@@ -108,6 +119,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     const sortedVictories = Object.entries(victoryCounts).sort(([,a], [,b]) => b - a);
 
+
+
+
+
+
+
     // --- CONFIGURACIÓN DEL ARCHIVO PDF ---
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=SEE_Reporte_${userName.replace(/\s+/g, '_')}.pdf`);
@@ -116,6 +133,11 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.pipe(res);
     
     // --- ENCABEZADO TIPO "TERMINAL" ---
+
+
+
+
+
     doc.fontSize(18).font('Courier-Bold').text('INFORME GENERADO POR SEE/AWOS');
     doc.fontSize(10).font('Courier').text('============================================================');
     doc.text(`PACIENTE: ${userName}`); 
@@ -123,6 +145,12 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.text(`GENERADO: ${new Date().toLocaleString()}`);
     doc.text('============================================================');
     doc.moveDown();
+
+
+
+
+
+
 
     // --- SECCIÓN 1: RESUMEN GENERAL ---
     doc.fontSize(14).font('Courier-Bold').text('[1] RESUMEN GENERAL');
@@ -162,6 +190,11 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     doc.text(`• Ejercicios Resp.:     ${crisisHistory.filter((c: any) => c.breathingExerciseCompleted).length} completados`);
     doc.moveDown();
 
+
+
+
+
+
     // --- SECCIÓN 3: VICTORIAS (HÁBITOS) ---
     doc.fontSize(14).font('Courier-Bold').text('[3] PATRONES DE AUTOCUIDADO');
     doc.moveDown(0.5);
@@ -176,11 +209,21 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     });
     doc.moveDown();
 
+
+
+
+
+
+
     // --- SECCIÓN 4: BITÁCORA DETALLADA (EL TÍTULO QUE FALTABA) ---
     doc.fontSize(14).font('Courier-Bold').text('[4] DETALLE CRONOLÓGICO');
     doc.text('------------------------------------------------------------');
     doc.moveDown(0.5);
 
+
+
+
+    
     crisisHistory.forEach((crisis: any) => {
         if (doc.y > 700) doc.addPage(); 
 

@@ -136,19 +136,19 @@ export const getCapsules = async (req: Request, res: Response) => {
       include: { targetEmotions: true }
     });
 
-    // MAGIA DE ARQUITECTO: Mapeamos las cápsulas para inyectarles la URL firmada
+    // Map las cápsulas, URL firmada
     const capsulesWithUrls = await Promise.all(
       capsules.map(async (capsule) => {
         let audioUrl = null;
 
-        // Si es de tipo AUDIO y tiene un s3Key, vamos a AWS por su Pase VIP de 1 hora
+        
         if (capsule.contentType === 'AUDIO' && capsule.s3Key) {
           audioUrl = await getDownloadUrl(capsule.s3Key);
         }
 
         return {
           ...capsule,
-          audioUrl // Tony recibirá este campo exacto que pidió
+          audioUrl 
         };
       })
     );
@@ -156,7 +156,7 @@ export const getCapsules = async (req: Request, res: Response) => {
     res.json({
       message: "Cápsulas recuperadas exitosamente",
       count: capsulesWithUrls.length,
-      capsules: capsulesWithUrls // Enviamos el arreglo con las URLs ya inyectadas
+      capsules: capsulesWithUrls 
     });
 
   } catch (error) {
@@ -190,7 +190,7 @@ export const updateCapsule = async (req: Request, res: Response) => {
         try {
           
           await deleteFileFromS3(existingCapsule.s3Key);
-          console.log("🗑️ Audio viejo eliminado por actualización");
+          console.log(" Audio viejo eliminado por actualización");
         } catch (error) {
           console.error("Aviso: No se pudo borrar el audio viejo de S3");
         }
@@ -256,7 +256,6 @@ export const deleteCapsule = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // PASO 1: Buscar la cápsula para saber si existe y si tiene un archivo en S3
     const existingCapsule = await prisma.capsule.findFirst({
       where: { 
         capsuleId: String(id), 
@@ -268,17 +267,17 @@ export const deleteCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-    // PASO 2: Si es un audio y tiene una llave de S3, disparar a Amazon primero
+  
     if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
         try {
             await deleteFileFromS3(existingCapsule.s3Key);
         } catch (s3Error) {
-            // Si S3 falla, detenemos todo. No borramos la base de datos para no perder el rastro.
+          
             return res.status(500).json({ error: "Error al eliminar el archivo físico de la nube" });
         }
     }
 
-    // PASO 3: Destruir el registro en PostgreSQL
+   
     await prisma.capsule.delete({
       where: { 
         capsuleId: String(id) 

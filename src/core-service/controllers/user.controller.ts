@@ -6,7 +6,6 @@ interface AuthRequest extends Request {
   user?: { userId: string };
 }
 
-// GET /api/users/profile (Para que el frontend cargue los datos)
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
@@ -45,7 +44,6 @@ export const updateProfile = async (req: Request, res: Response) => {
       select: { avatarKey: true }
     });
 
-    // 2. Limpieza de S3: Si tiene foto vieja, y Tony mandó borrarla ("") o cambiarla por una nueva, eliminamos la anterior
     if (currentUser?.avatarKey && currentUser.avatarKey !== avatarKey) {
       try {
         await deleteFileFromS3(currentUser.avatarKey);
@@ -58,7 +56,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     const dataToUpdate: any = {};
     if (preferredName !== undefined) dataToUpdate.preferredName = preferredName;
     
-    // Si Tony manda "" o null, limpiamos la base de datos
+  
     if (avatarKey === "" || avatarKey === null) {
       dataToUpdate.avatarKey = null;
     } else if (avatarKey !== undefined) {
@@ -84,8 +82,7 @@ export const deleteAccount = async (req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.userId;
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // "onDelete: Cascade" 
-    // borrar al usuario eliminará automáticamente TODAS sus crisis, victorias y cápsulas.
+ 
     await prisma.user.delete({
       where: { userId }
     });
