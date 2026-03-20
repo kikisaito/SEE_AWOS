@@ -101,3 +101,63 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Error interno", details: error.message });
     }
 };
+
+
+
+
+
+export const getClinicalHypothesis = async (req: Request, res: Response) => {
+    try {
+        console.log('[INFO] Calculando métricas de hipótesis clínica...');
+
+        // 1. Obtener todas las sesiones de crisis donde SE USÓ una cápsula
+        //    Y que además tengan una evaluación final completada.
+        const sessionsWithCapsules = await prisma.crisisSession.findMany({
+            where: {
+                usedCapsuleId: { not: null },
+                finalEvaluationId: { not: null }
+            },
+            include: {
+                finalEvaluation: true // Incluimos la evaluación para saber si mejoró
+            }
+        });
+
+        const totalUsed = sessionsWithCapsules.length;
+
+        // Si nadie ha usado cápsulas y evaluado, evitamos división por cero
+        if (totalUsed === 0) {
+            return res.status(200).json({
+                success: true,
+                total_capsules_used_in_crisis: 0,
+                improvement_percentage: 0,
+                message: "No hay datos suficientes para calcular la hipótesis aún."
+            });
+        }
+
+        // 2. Contar en cuántas de esas sesiones el usuario reportó mejoría
+        // Asumiendo que las descripciones en EvaluationScaleCatalog son exactas a tu seed
+        let improvedCount = 0;
+        
+        sessionsWithCapsules.forEach(session => {
+            const evalDesc = session.finalEvaluation?.description;
+            if (evalDesc === 'Mejor' || evalDesc === 'Un poco mejor') {
+                improvedCount++;
+            }
+        });
+
+        // 3. Calcular el porcentaje de éxito (La Hipótesis)
+        const improvementPercentage = (improvedCount / totalUsed) * 100;
+
+        return res.status(200).json({
+            success: true,
+            total_capsules_used_in_crisis: totalUsed,
+            improved_sessions: improvedCount,
+            improvement_percentage: Number(improvementPercentage.toFixed(2)), // Redondeado a 2 decimales
+            hypothesis_validated: improvementPercentage >= 60 // Tu umbral del 60%
+        });
+
+    } catch (error: any) {
+        console.error("[ERROR] Fallo al calcular hipótesis:", error);
+        return res.status(500).json({ error: "Error interno al calcular métricas", details: error.message });
+    }
+};
