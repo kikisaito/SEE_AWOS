@@ -132,12 +132,13 @@ export const generateClinicalReport = async (req: Request, res: Response) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     doc.pipe(res);
     
+
+
+
+
+
+    
     // --- ENCABEZADO TIPO "TERMINAL" ---
-
-
-
-
-
     doc.fontSize(18).font('Courier-Bold').text('INFORME GENERADO POR SEE/AWOS');
     doc.fontSize(10).font('Courier').text('============================================================');
     doc.text(`PACIENTE: ${userName}`); 
