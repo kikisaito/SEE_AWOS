@@ -6,7 +6,7 @@ import victoryRoutes from './routes/victory.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import recommendationRoutes from './routes/recommendation.routes';
 import userRoutes from './routes/user.routes'
-import s3Routes from './routes/s3.routes';
+import mediaRoutes from './routes/media.routes';
 import telemetryRoutes from './routes/telemetry.routes';
 import catalogRoutes from './routes/catalog.routes';
 import helmet from 'helmet';
@@ -38,7 +38,7 @@ app.use('/api/victories', victoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/s3', s3Routes);
+app.use('/api/media', mediaRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/catalogs', catalogRoutes);
 

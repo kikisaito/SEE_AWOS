@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { getPresignedUrl } from '../controllers/s3.controller';
 import { authenticateToken } from '../../shared/middlewares/auth.middleware';
+import { getPresignedUrl } from '../controllers/media.controller';
 
 const router = Router();
 
-// GET /api/s3/presigned-url
-router.get('/presigned-url', authenticateToken, getPresignedUrl);
+// Endpoint: GET /api/core/media/upload-url?filename=audio.mp3
+router.get('/upload-url', authenticateToken, getPresignedUrl);
 
 export default router;

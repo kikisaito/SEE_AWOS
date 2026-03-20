@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../../shared/config/prisma'; 
-import { deleteFileFromS3 } from '../../shared/s3.service';
+// CORRECCIÓN: Apunta a cloudinary y usa deleteFileFromCloud
+import { deleteFileFromCloud } from '../../shared/cloudinary.service';
 
 interface AuthRequest extends Request {
   user?: { userId: string };
@@ -30,7 +31,6 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-// PUT /api/users/profile (Actualizar nombre y/o foto)
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
@@ -46,9 +46,10 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     if (currentUser?.avatarKey && currentUser.avatarKey !== avatarKey) {
       try {
-        await deleteFileFromS3(currentUser.avatarKey);
-      } catch (s3Error) {
-        console.warn("Aviso: No se pudo borrar la foto antigua de S3, continuando...", s3Error);
+        // CORRECCIÓN: Borrado en Cloudinary
+        await deleteFileFromCloud(currentUser.avatarKey);
+      } catch (cloudError) {
+        console.warn("Aviso: No se pudo borrar la foto antigua de Cloudinary, continuando...", cloudError);
       }
     }
 
@@ -56,7 +57,6 @@ export const updateProfile = async (req: Request, res: Response) => {
     const dataToUpdate: any = {};
     if (preferredName !== undefined) dataToUpdate.preferredName = preferredName;
     
-  
     if (avatarKey === "" || avatarKey === null) {
       dataToUpdate.avatarKey = null;
     } else if (avatarKey !== undefined) {
@@ -76,13 +76,11 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-// DELETE /api/users/profile (Borrar cuenta - GDPR)
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
- 
     await prisma.user.delete({
       where: { userId }
     });

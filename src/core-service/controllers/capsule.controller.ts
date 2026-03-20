@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { ContentType } from '@prisma/client'; 
 import prisma from '../../shared/config/prisma'; 
-import { generateUploadUrl, deleteFileFromS3, getDownloadUrl } from '../../shared/s3.service';
-
+// CORRECCIÓN: Apunta a cloudinary y usa deleteFileFromCloud
+import { generateUploadUrl, deleteFileFromCloud, getDownloadUrl } from '../../shared/cloudinary.service';
 
 interface AuthRequest extends Request {
   user?: {
@@ -10,7 +10,6 @@ interface AuthRequest extends Request {
     email: string;
   };
 }
-
 
 export const getPresignedUrl = async (req: Request, res: Response) => {
   try {
@@ -24,7 +23,6 @@ export const getPresignedUrl = async (req: Request, res: Response) => {
     if (!fileName || !fileType) {
       return res.status(400).json({ error: "Faltan parámetros: fileName y fileType son requeridos" });
     }
-
     
     const { uploadUrl, key } = await generateUploadUrl(
       userId, 
@@ -34,7 +32,7 @@ export const getPresignedUrl = async (req: Request, res: Response) => {
 
     res.json({
       uploadUrl, 
-      s3Key: key 
+      s3Key: key // Mantenemos s3Key en el JSON para no romper el frontend de Tony
     });
 
   } catch (error) {
@@ -43,27 +41,18 @@ export const getPresignedUrl = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
-
-
 export const requestUpload = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
-    
-    
     const { fileName, fileType } = req.query; 
 
     if (!userId) {
       return res.status(401).json({ error: "Usuario no autenticado" });
     }
-
     
     if (!fileName || !fileType) {
       return res.status(400).json({ error: "Nombre de archivo y tipo (fileType) requeridos" });
     }
-
    
     const data = await generateUploadUrl(
         userId, 
@@ -74,12 +63,10 @@ export const requestUpload = async (req: Request, res: Response) => {
     res.json(data);
 
   } catch (error) {
-    console.error("Error S3:", error);
+    console.error("Error en Cloudinary:", error);
     res.status(500).json({ error: "Error al generar URL de subida" });
   }
 };
-
-
 
 export const createCapsule = async (req: Request, res: Response) => {
   try {
@@ -88,7 +75,6 @@ export const createCapsule = async (req: Request, res: Response) => {
     const { title, contentType, contentText, s3Key, emotionIds } = req.body;
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
-
     
     if (contentType === 'TEXT' && !contentText) {
       return res.status(400).json({ error: "Falta el texto de la cápsula" });
@@ -117,10 +103,6 @@ export const createCapsule = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
-
 export const getCapsules = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
@@ -129,18 +111,15 @@ export const getCapsules = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Usuario no autenticado" });
     }
 
-    // Obtenemos las cápsulas de la base de datos
     const capsules = await prisma.capsule.findMany({
       where: { userId: userId },
       orderBy: { createdAt: 'desc' },
       include: { targetEmotions: true }
     });
 
-    // Map las cápsulas, URL firmada
     const capsulesWithUrls = await Promise.all(
       capsules.map(async (capsule) => {
         let audioUrl = null;
-
         
         if (capsule.contentType === 'AUDIO' && capsule.s3Key) {
           audioUrl = await getDownloadUrl(capsule.s3Key);
@@ -165,8 +144,6 @@ export const getCapsules = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const updateCapsule = async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.userId;
@@ -182,21 +159,18 @@ export const updateCapsule = async (req: Request, res: Response) => {
     if (!existingCapsule) {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
-
   
     if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
-      
       if (contentType === 'TEXT' || (s3Key && s3Key !== existingCapsule.s3Key)) {
         try {
-          
-          await deleteFileFromS3(existingCapsule.s3Key);
-          console.log(" Audio viejo eliminado por actualización");
+          // CORRECCIÓN: Borrado en Cloudinary
+          await deleteFileFromCloud(existingCapsule.s3Key);
+          console.log("Audio viejo eliminado por actualización");
         } catch (error) {
-          console.error("Aviso: No se pudo borrar el audio viejo de S3");
+          console.error("Aviso: No se pudo borrar el audio viejo de Cloudinary");
         }
       }
     }
-
     
     const dataToUpdate: any = {};
     
@@ -229,7 +203,6 @@ export const updateCapsule = async (req: Request, res: Response) => {
       include: { targetEmotions: true }
     });
 
-
     let audioUrl = null;
     if (updatedCapsule.contentType === 'AUDIO' && updatedCapsule.s3Key) {
       audioUrl = await getDownloadUrl(updatedCapsule.s3Key); 
@@ -245,9 +218,6 @@ export const updateCapsule = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno al actualizar la cápsula" });
   }
 };
-
-
-
 
 export const deleteCapsule = async (req: Request, res: Response) => {
   try {
@@ -267,16 +237,15 @@ export const deleteCapsule = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Cápsula no encontrada o no te pertenece" });
     }
 
-  //compensatoria
+    // Compensatoria
     if (existingCapsule.contentType === 'AUDIO' && existingCapsule.s3Key) {
         try {
-            await deleteFileFromS3(existingCapsule.s3Key);
-        } catch (s3Error) {
-          
+            // CORRECCIÓN: Borrado en Cloudinary
+            await deleteFileFromCloud(existingCapsule.s3Key);
+        } catch (cloudError) {
             return res.status(500).json({ error: "Error al eliminar el archivo físico de la nube" });
         }
     }
-
    
     await prisma.capsule.delete({
       where: { 
