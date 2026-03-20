@@ -9,7 +9,7 @@ cloudinary.config({
 
 // 2. Generar firma para Tony (Reemplaza la URL presignada de S3)
 export const generateUploadUrl = async (userId: string, fileName: string, fileType: string) => {
-  const cleanFileName = fileName.replace(/\s+/g, '-').split('.')[0]; // Quitamos extensión
+  const cleanFileName = fileName.replace(/\s+/g, '-').split('.')[0]; 
   const publicId = `users/${userId}/${Date.now()}-${cleanFileName}`;
   const timestamp = Math.round(new Date().getTime() / 1000);
 
@@ -22,10 +22,9 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
       process.env.CLOUDINARY_API_SECRET!
     );
 
-    // Devolvemos el mismo formato para no romper el controlador
     return { 
       uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, 
-      key: publicId, // Mantenemos "key" para que Prisma guarde esto en "s3Key"
+      key: publicId, 
       signature,
       timestamp,
       apiKey: process.env.CLOUDINARY_API_KEY
@@ -39,7 +38,6 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
 // 3. Borrar archivo (Reemplaza a deleteFileFromS3)
 export const deleteFileFromCloud = async (cloudKey: string) => {
   try {
-    // Intentamos borrar como video (audio) y como imagen por si acaso
     await cloudinary.uploader.destroy(cloudKey, { resource_type: 'video' });
     await cloudinary.uploader.destroy(cloudKey, { resource_type: 'image' });
     console.log(`[SUCCESS] Archivo eliminado de Cloudinary: ${cloudKey}`);
@@ -52,8 +50,6 @@ export const deleteFileFromCloud = async (cloudKey: string) => {
 // 4. Leer archivo (Reemplaza a getDownloadUrl)
 export const getDownloadUrl = async (cloudKey: string): Promise<string> => {
   try {
-    // Cloudinary genera la URL pública al instante sin necesidad de firmarla cada vez
-    // Usamos 'video' porque tus cápsulas son principalmente audio
     const fileUrl = cloudinary.url(cloudKey, { secure: true, resource_type: 'video' });
     return fileUrl;
   } catch (error) {
