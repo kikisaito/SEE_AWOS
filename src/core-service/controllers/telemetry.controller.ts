@@ -25,7 +25,7 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
         const serializedRows = metrics.map(row => ({
            
             project_id: myProjectId, 
-            snapshot_date: row.snapshot_date, 
+            snapshot_date: new Date(row.snapshot_date).toISOString().split('T')[0],
             queryid: String(row.queryid),
             dbid: Number(row.dbid),
             userid: Number(row.userid),
