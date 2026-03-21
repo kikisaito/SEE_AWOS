@@ -161,3 +161,36 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Error interno al calcular métricas", details: error.message });
     }
 };
+
+
+
+
+
+
+
+export const downloadLastCSV = (req: Request, res: Response) => {
+    try {
+        console.log('[INFO] Solicitud para descargar el CSV del día...');
+        
+        // 1. Reconstruimos el nombre del archivo de hoy, igual que en el snapshot
+        const myProjectId = Number(process.env.TEAM_PROJECT_ID) || 6;
+        const today = new Date();
+        const dateString = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        const fileName = `project_${myProjectId}_${dateString}.csv`;
+        
+        // 2. Buscamos la ruta exacta en la carpeta de backups
+        const filePath = path.join(__dirname, '../../../backups', fileName);
+
+        // 3. Verificamos si el archivo existe y lo enviamos
+        if (fs.existsSync(filePath)) {
+            return res.download(filePath, fileName); // res.download fuerza la descarga en el navegador
+        } else {
+            return res.status(404).json({ 
+                error: "No se encontró el CSV de hoy. Asegúrate de ejecutar el 'SYNC TO BIGQUERY' primero." 
+            });
+        }
+    } catch (error: any) {
+        console.error("[ERROR] Fallo al descargar el CSV:", error);
+        return res.status(500).json({ error: "Error interno al procesar la descarga." });
+    }
+};
