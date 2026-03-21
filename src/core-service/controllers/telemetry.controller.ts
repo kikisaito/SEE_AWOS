@@ -194,3 +194,34 @@ export const downloadLastCSV = (req: Request, res: Response) => {
         return res.status(500).json({ error: "Error interno al procesar la descarga." });
     }
 };
+
+
+
+
+
+
+
+
+export const getSnapshotPreview = async (req: Request, res: Response) => {
+    try {
+        console.log('[INFO] Obteniendo vista previa del snapshot para el radar...');
+
+        // Solo traemos los campos que importan para la vista visual y limitamos a 50 para no saturar
+        const preview: any[] = await prisma.$queryRaw`
+            SELECT query, calls, total_exec_time_ms, mean_exec_time_ms 
+            FROM vista_exportacion_metricas 
+            ORDER BY calls DESC 
+            LIMIT 50;
+        `;
+
+        return res.status(200).json({ 
+            success: true,
+            total_queries: preview.length,
+            data: preview
+        });
+
+    } catch (error: any) {
+        console.error("[ERROR] Fallo al obtener preview del snapshot:", error);
+        return res.status(500).json({ error: "Error interno al leer la vista." });
+    }
+};
