@@ -206,7 +206,6 @@ export const getSnapshotPreview = async (req: Request, res: Response) => {
     try {
         console.log('[INFO] Obteniendo vista previa del snapshot para el radar...');
 
-        // Solo traemos los campos que importan para la vista visual y limitamos a 50 para no saturar
         const preview: any[] = await prisma.$queryRaw`
             SELECT query, calls, total_exec_time_ms, mean_exec_time_ms 
             FROM vista_exportacion_metricas 
@@ -214,10 +213,18 @@ export const getSnapshotPreview = async (req: Request, res: Response) => {
             LIMIT 50;
         `;
 
+        // Serialización obligatoria para evitar el error de BigInt
+        const serializedPreview = preview.map(row => ({
+            query: String(row.query),
+            calls: Number(row.calls),
+            total_exec_time_ms: parseFloat(row.total_exec_time_ms) || 0,
+            mean_exec_time_ms: parseFloat(row.mean_exec_time_ms) || 0
+        }));
+
         return res.status(200).json({ 
             success: true,
-            total_queries: preview.length,
-            data: preview
+            total_queries: serializedPreview.length,
+            data: serializedPreview
         });
 
     } catch (error: any) {
