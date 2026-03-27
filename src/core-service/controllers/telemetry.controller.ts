@@ -108,34 +108,20 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
 
 export const getClinicalHypothesis = async (req: Request, res: Response) => {
     try {
-        console.log('[INFO] Calculando métricas de hipótesis clínica...');
+        console.log('[INFO] Calculando métricas de hipótesis clínica y datos demográficos...');
 
-        // 1. Obtener todas las sesiones de crisis donde SE USÓ una cápsula
-        //    Y que además tengan una evaluación final completada.
+        // 1. HIPÓTESIS CLÍNICA ORIGINAL (Mejoría vs No Mejoría)
         const sessionsWithCapsules = await prisma.crisisSession.findMany({
             where: {
                 usedCapsuleId: { not: null },
                 finalEvaluationId: { not: null }
             },
             include: {
-                finalEvaluation: true // Incluimos la evaluación para saber si mejoró
+                finalEvaluation: true 
             }
         });
 
         const totalUsed = sessionsWithCapsules.length;
-
-        // Si nadie ha usado cápsulas y evaluado, evitamos división por cero
-        if (totalUsed === 0) {
-            return res.status(200).json({
-                success: true,
-                total_capsules_used_in_crisis: 0,
-                improvement_percentage: 0,
-                message: "No hay datos suficientes para calcular la hipótesis aún."
-            });
-        }
-
-        // 2. Contar en cuántas de esas sesiones el usuario reportó mejoría
-        // Asumiendo que las descripciones en EvaluationScaleCatalog son exactas a tu seed
         let improvedCount = 0;
         
         sessionsWithCapsules.forEach(session => {
@@ -145,23 +131,62 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             }
         });
 
-        // 3. Calcular el porcentaje de éxito (La Hipótesis)
-        const improvementPercentage = (improvedCount / totalUsed) * 100;
+        const improvementPercentage = totalUsed > 0 ? (improvedCount / totalUsed) * 100 : 0;
 
+        // 2. FRECUENCIA DE EMOCIONES (Gráfica de Barras Superior)
+        // Extraemos todas las sesiones y sus emociones relacionadas
+        const allSessionsEmotions = await prisma.crisisSession.findMany({
+            select: { selectedEmotions: { select: { name: true } } }
+        });
+        
+        const emotionMap: Record<string, number> = {};
+        allSessionsEmotions.forEach(session => {
+            session.selectedEmotions.forEach(emotion => {
+                emotionMap[emotion.name] = (emotionMap[emotion.name] || 0) + 1;
+            });
+        });
+        
+        // Convertimos el mapa a un arreglo, lo ordenamos de mayor a menor y tomamos el Top 5
+        const emotionsFrequency = Object.entries(emotionMap)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // 3. FRECUENCIA DE LUGARES (Gráfica de Barras Inferior)
+        // Utilizamos la función nativa groupBy de Prisma para agrupar por el campo 'location'
+        const locationsRaw = await prisma.crisisSession.groupBy({
+            by: ['location'],
+            _count: { location: true },
+            where: { location: { not: null } } 
+        });
+        
+        // Filtramos espacios vacíos, mapeamos al formato de Recharts, ordenamos y tomamos el Top 5
+        const locationsFrequency = locationsRaw
+            .filter(item => item.location && item.location.trim() !== "")
+            .map(item => ({
+                name: item.location as string,
+                count: item._count.location
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // 4. RETORNO DE DATOS AL FRONTEND
+        // Estructura exacta requerida por tu nuevo código en React
         return res.status(200).json({
             success: true,
             total_capsules_used_in_crisis: totalUsed,
             improved_sessions: improvedCount,
-            improvement_percentage: Number(improvementPercentage.toFixed(2)), // Redondeado a 2 decimales
-            hypothesis_validated: improvementPercentage >= 60 // Tu umbral del 60%
+            improvement_percentage: Number(improvementPercentage.toFixed(2)),
+            hypothesis_validated: improvementPercentage >= 60,
+            emotions_frequency: emotionsFrequency,
+            locations_frequency: locationsFrequency
         });
 
     } catch (error: any) {
-        console.error("[ERROR] Fallo al calcular hipótesis:", error);
+        console.error("[ERROR] Fallo al calcular métricas del dashboard:", error);
         return res.status(500).json({ error: "Error interno al calcular métricas", details: error.message });
     }
 };
-
 
 
 
