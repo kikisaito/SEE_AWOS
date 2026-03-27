@@ -110,15 +110,13 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
     try {
         console.log('[INFO] Calculando métricas de hipótesis clínica y datos demográficos...');
 
-        // 1. HIPÓTESIS CLÍNICA ORIGINAL (Mejoría vs No Mejoría)
+        // 1. HIPÓTESIS CLÍNICA ORIGINAL
         const sessionsWithCapsules = await prisma.crisisSession.findMany({
             where: {
                 usedCapsuleId: { not: null },
                 finalEvaluationId: { not: null }
             },
-            include: {
-                finalEvaluation: true 
-            }
+            include: { finalEvaluation: true }
         });
 
         const totalUsed = sessionsWithCapsules.length;
@@ -133,8 +131,7 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
 
         const improvementPercentage = totalUsed > 0 ? (improvedCount / totalUsed) * 100 : 0;
 
-        // 2. FRECUENCIA DE EMOCIONES (Gráfica de Barras Superior)
-        // Extraemos todas las sesiones y sus emociones relacionadas
+        // 2. FRECUENCIA DE EMOCIONES
         const allSessionsEmotions = await prisma.crisisSession.findMany({
             select: { selectedEmotions: { select: { name: true } } }
         });
@@ -146,21 +143,18 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             });
         });
         
-        // Convertimos el mapa a un arreglo, lo ordenamos de mayor a menor y tomamos el Top 5
         const emotionsFrequency = Object.entries(emotionMap)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        // 3. FRECUENCIA DE LUGARES (Gráfica de Barras Inferior)
-        // Utilizamos la función nativa groupBy de Prisma para agrupar por el campo 'location'
+        // 3. FRECUENCIA DE LUGARES
         const locationsRaw = await prisma.crisisSession.groupBy({
             by: ['location'],
             _count: { location: true },
             where: { location: { not: null } } 
         });
         
-        // Filtramos espacios vacíos, mapeamos al formato de Recharts, ordenamos y tomamos el Top 5
         const locationsFrequency = locationsRaw
             .filter(item => item.location && item.location.trim() !== "")
             .map(item => ({
@@ -170,8 +164,39 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        // 4. RETORNO DE DATOS AL FRONTEND
-        // Estructura exacta requerida por tu nuevo código en React
+        // 4. DETONANTES FRECUENTES
+        const triggersRaw = await prisma.crisisSession.groupBy({
+            by: ['triggerDesc'],
+            _count: { triggerDesc: true },
+            where: { triggerDesc: { not: null } }
+        });
+
+        const triggersFrequency = triggersRaw
+            .filter(item => item.triggerDesc && item.triggerDesc.trim() !== "")
+            .map(item => ({
+                name: item.triggerDesc as string,
+                count: item._count.triggerDesc
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // 5. CONSUMO DE SUSTANCIAS
+        const substancesRaw = await prisma.crisisSession.groupBy({
+            by: ['substanceUse'],
+            _count: { substanceUse: true },
+            where: { substanceUse: { not: null } }
+        });
+
+        const substancesFrequency = substancesRaw
+            .filter(item => item.substanceUse && item.substanceUse.trim() !== "")
+            .map(item => ({
+                name: item.substanceUse as string,
+                count: item._count.substanceUse
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // 6. RETORNO DE DATOS AL FRONTEND
         return res.status(200).json({
             success: true,
             total_capsules_used_in_crisis: totalUsed,
@@ -179,15 +204,16 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             improvement_percentage: Number(improvementPercentage.toFixed(2)),
             hypothesis_validated: improvementPercentage >= 60,
             emotions_frequency: emotionsFrequency,
-            locations_frequency: locationsFrequency
+            locations_frequency: locationsFrequency,
+            triggers_frequency: triggersFrequency,
+            substances_frequency: substancesFrequency
         });
 
     } catch (error: any) {
         console.error("[ERROR] Fallo al calcular métricas del dashboard:", error);
-        return res.status(500).json({ error: "Error interno al calcular métricas", details: error.message });
+        return res.status(500).json({ error: "Error interno", details: error.message });
     }
 };
-
 
 
 
