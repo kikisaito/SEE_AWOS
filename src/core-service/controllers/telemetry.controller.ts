@@ -103,9 +103,6 @@ export const exportDailySnapshot = async (req: Request, res: Response) => {
 };
 
 
-
-
-
 export const getClinicalHypothesis = async (req: Request, res: Response) => {
     try {
         console.log('[INFO] Calculando métricas de hipótesis clínica y datos demográficos...');
@@ -171,12 +168,29 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             where: { triggerDesc: { not: null } }
         });
 
-        const triggersFrequency = triggersRaw
-            .filter(item => item.triggerDesc && item.triggerDesc.trim() !== "")
-            .map(item => ({
-                name: item.triggerDesc as string,
-                count: item._count.triggerDesc
-            }))
+        // IMPORTANTE: Asegúrate de que estos textos coincidan exactamente (mayúsculas/minúsculas/espacios) 
+        // con las opciones de tu frontend.
+        const opcionesEstandar = [
+            "Discutí en el trabajo",
+            "Problemas familiares",
+            "Problemas económicos",
+            "nada"
+        ];
+
+        const triggersMap: Record<string, number> = {};
+
+        triggersRaw.forEach(item => {
+            const desc = item.triggerDesc?.trim();
+            if (!desc) return; 
+
+            const count = item._count.triggerDesc;
+            const categoriaFinal = opcionesEstandar.includes(desc) ? desc : "Otro";
+
+            triggersMap[categoriaFinal] = (triggersMap[categoriaFinal] || 0) + count;
+        });
+
+        const triggersFrequency = Object.entries(triggersMap)
+            .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
@@ -216,9 +230,6 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
 };
 
 
-
-
-
 export const downloadLastCSV = (req: Request, res: Response) => {
     try {
         console.log('[INFO] Solicitud para descargar el CSV del día...');
@@ -245,12 +256,6 @@ export const downloadLastCSV = (req: Request, res: Response) => {
         return res.status(500).json({ error: "Error interno al procesar la descarga." });
     }
 };
-
-
-
-
-
-
 
 
 export const getSnapshotPreview = async (req: Request, res: Response) => {

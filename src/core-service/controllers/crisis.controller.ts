@@ -222,44 +222,72 @@ export const updateCrisisProgress = async (req: Request, res: Response) => {
 
 
 
+
 export const saveCrisisReflection = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.userId;
+    const userId = (req as AuthRequest).user?.userId;
     const { id } = req.params;
     const { triggerDesc, location, companion, substanceUse, notes, finalEvaluationId } = req.body;
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // 1. Verificar si la crisis existe y pertenece al usuario
+    // 1. Verificamos que la crisis existe (fuera de la transacción por ser lectura)
     const existingCrisis = await prisma.crisisSession.findFirst({
-      where: { 
-        crisisId: String(id), 
-        userId: userId 
-      }
+      where: { crisisId: String(id), userId: userId }
     });
 
     if (!existingCrisis) {
       return res.status(404).json({ error: "Crisis no encontrada o no te pertenece" });
     }
 
-    // 2. Actualizar la crisis marcándola como terminada
-    const finishedCrisis = await prisma.crisisSession.update({
-      where: { crisisId: String(id) },
-      data: {
-        triggerDesc,
-        location,
-        companion,
-        substanceUse,
-        notes,
-        finalEvaluationId,
-        isReflectionCompleted: true, // Se marca como completada
-        endedAt: new Date() // Sella la hora exacta en que terminó
-      }
+    // =========================================================================
+    // INICIO DE LA TRANSACCIÓN: Encapsulando operaciones críticas
+    // =========================================================================
+    const [finishedCrisis, rachaActualizada] = await prisma.$transaction(async (tx) => {
+      
+      // Operación A: Sellar la crisis
+      const crisisActualizada = await tx.crisisSession.update({
+        where: { crisisId: String(id) },
+        data: {
+          triggerDesc: triggerDesc ? String(triggerDesc) : null,
+          location: location ? String(location) : null,
+          companion: companion ? String(companion) : null,
+          substanceUse: substanceUse ? String(substanceUse) : null,
+          notes: notes ? String(notes) : null,
+          finalEvaluationId: finalEvaluationId ? Number(finalEvaluationId) : null,
+          isReflectionCompleted: true, 
+          endedAt: new Date() 
+        }
+      });
+
+      // Operación B: Registrar una victoria automática por haber superado la crisis
+      // Nota: Asumimos que el victoryTypeId: 1 es "Superar una crisis" en tu catálogo.
+      // Cámbialo por el ID correcto de tu VictoryTypeCatalog si es diferente.
+      const victoriaCreada = await tx.userVictory.create({
+        data: {
+          userId: userId,
+          victoryTypeId: 1, // <--- ID del tipo de victoria por superar crisis
+          occurredAt: new Date()
+        }
+      });
+
+      // Si todo sale bien, Prisma ejecuta el COMMIT automáticamente.
+      // Si falla Operación A o B, Prisma hace ROLLBACK de ambas.
+      return [crisisActualizada, victoriaCreada];
+    });
+    // =========================================================================
+    // FIN DE LA TRANSACCIÓN
+    // =========================================================================
+
+    res.status(200).json({ 
+        message: "Reflexión guardada. Racha y crisis actualizadas mediante transacción segura.", 
+        crisis: finishedCrisis,
+        victoria: rachaActualizada
     });
 
-    res.status(200).json({ message: "Reflexión guardada y crisis finalizada", crisis: finishedCrisis });
   } catch (error) {
-    console.error("Error al guardar reflexión:", error);
-    res.status(500).json({ error: "Error interno al guardar la reflexión" });
+    console.error("Error crítico en transacción de crisis:", error);
+    // Si la red falla aquí, la base de datos se mantiene íntegra gracias al rollback automático.
+    res.status(500).json({ error: "Fallo la transacción. Base de datos intacta." });
   }
 };
