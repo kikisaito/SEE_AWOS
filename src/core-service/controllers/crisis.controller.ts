@@ -98,7 +98,7 @@ export const updateCrisis = async (req: Request, res: Response) => {
         location: location || null,
         companion: companion || null,
         substanceUse: substanceUse || null,
-        isReflectionCompleted: true, // ¡Marcamos que ya reflexionó!
+        isReflectionCompleted: true, // Marcamos que ya reflexionó
         endedAt: new Date() // Guardamos la hora exacta del fin
       },
       include: {
@@ -174,7 +174,7 @@ export const updateCrisisProgress = async (req: Request, res: Response) => {
     const userId = (req as any).user?.userId;
     const { id } = req.params; 
     
-    // 🚀 Capturamos TODOS los datos que Tony dice estar enviando
+    
     const { 
         breathingExerciseCompleted, 
         usedCapsuleId, 

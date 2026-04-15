@@ -1,11 +1,15 @@
 import { Router } from 'express';
-import { register, login, googleLogin } from './auth.controller';
+import { register, login, googleLogin, generate2FA, verifyAndEnable2FA, verifyLogin2FA } from './auth.controller';
 
 const router = Router();
 
-// MVP Simplificado
 router.post('/register', register);
 router.post('/login', login);
-router.post('/login', login); // Ruta duplicada para login, se puede eliminar o modificar según sea necesario, aun no borro nada pq sigo revisando los demas archivos al final hare limpiado de todo
 router.post('/googleLogin', googleLogin);
+
+// Rutas para 2FA
+router.post('/2fa/generate', generate2FA);
+router.post('/2fa/enable', verifyAndEnable2FA);
+router.post('/login/verify-2fa', verifyLogin2FA);
+
 export default router;

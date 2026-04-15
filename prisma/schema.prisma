@@ -24,6 +24,10 @@ model User {
   avatarKey       String?   @map("avatar_key")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
+  // NUEVOS CAMPOS 2FA:
+  twoFactorSecret String?   @map("two_factor_secret")
+  isTwoFactorEnabled Boolean @default(false) @map("is_two_factor_enabled")
+
   capsules        Capsule[]
   crisisSessions  CrisisSession[]
   victories       UserVictory[]
