@@ -168,8 +168,7 @@ export const getClinicalHypothesis = async (req: Request, res: Response) => {
             where: { triggerDesc: { not: null } }
         });
 
-        // IMPORTANTE: Asegúrate de que estos textos coincidan exactamente (mayúsculas/minúsculas/espacios) 
-        // con las opciones de tu frontend.
+        
         const opcionesEstandar = [
             "Discutí en el trabajo",
             "Problemas familiares",

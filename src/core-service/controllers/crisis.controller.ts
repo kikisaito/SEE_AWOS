@@ -228,7 +228,6 @@ export const saveCrisisReflection = async (req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.userId;
     const { id } = req.params;
     
-    // 1. AGREGAMOS usedCapsuleId AL DESTRUCTURING
     const { 
       triggerDesc, location, companion, substanceUse, 
       notes, finalEvaluationId, usedCapsuleId 
@@ -249,15 +248,15 @@ export const saveCrisisReflection = async (req: Request, res: Response) => {
       const crisisActualizada = await tx.crisisSession.update({
         where: { crisisId: String(id) },
         data: {
-          triggerDesc: triggerDesc ? String(triggerDesc) : null,
-          location: location ? String(location) : null,
-          companion: companion ? String(companion) : null,
-          substanceUse: substanceUse ? String(substanceUse) : null,
-          notes: notes ? String(notes) : null,
-          finalEvaluationId: finalEvaluationId ? Number(finalEvaluationId) : null,
-          
-          // 2. LO GUARDAMOS EN LA BD (Si no lo mandan, dejamos el que ya estaba por si se guardó en updateCrisisProgress)
-          ...(usedCapsuleId && { usedCapsuleId: String(usedCapsuleId) }),
+          // Lógica corregida: Solo actualiza el campo si no es undefined. 
+          // Esto protege los datos que Tony ya envió en peticiones previas.
+          ...(triggerDesc !== undefined && { triggerDesc: String(triggerDesc) }),
+          ...(location !== undefined && { location: String(location) }),
+          ...(companion !== undefined && { companion: String(companion) }),
+          ...(substanceUse !== undefined && { substanceUse: String(substanceUse) }),
+          ...(notes !== undefined && { notes: String(notes) }),
+          ...(finalEvaluationId !== undefined && { finalEvaluationId: Number(finalEvaluationId) }),
+          ...(usedCapsuleId !== undefined && { usedCapsuleId: String(usedCapsuleId) }),
 
           isReflectionCompleted: true, 
           endedAt: new Date() 
