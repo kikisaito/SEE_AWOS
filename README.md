@@ -1,90 +1,58 @@
 # SEE / AWOS - Sistema de Estabilización Emocional (Backend API)
 
 **Institución:** Universidad Politécnica de Chiapas
-**Desarrollador:** Jaitovich Bisnaud Jimenez
+**Desarrolladores:** Jaitovich Bisnaud Jimenez (Kikis), Antonio de Hoyos Hernandez
 **Versión:** 1.0.0
 **Arquitectura:** Service-Based Architecture (SOA) / Monorepo
 
-## Descripción del Proyecto
-
+## 1. Descripción del Proyecto
 El backend del Sistema de Estabilización Emocional (SEE/AWOS) es una API RESTful diseñada para dar soporte clínico, registros de hábitos y contención de crisis emocionales. El sistema permite el registro de usuarios, seguimiento de métricas de salud mental, almacenamiento de recursos multimedia en la nube y generación de reportes clínicos automatizados en formato PDF.
 
-## Arquitectura de Microservicios
+## 2. Arquitectura de Microservicios
+El proyecto fue construido bajo un enfoque de Arquitectura Basada en Servicios (SOA) utilizando un patrón Monorepo para facilitar el desarrollo local y mantener el acoplamiento débil entre dominios. El sistema se compone de tres microservicios independientes:
 
-El proyecto fue construido bajo un enfoque de Arquitectura Basada en Servicios (SBA) utilizando un patrón Monorepo para facilitar el desarrollo local y mantener el acoplamiento débil entre dominios.
+* **Auth Service (Puerto 3001):** Gestiona la autenticación, generación de JWT y seguridad multifactor (TOTP).
+* **Core Service (Puerto 3002):** Maneja la lógica de negocio, el ciclo de vida de las crisis, la gestión de cápsulas (integración con AWS S3) y el motor de recomendaciones.
+* **Report Service (Puerto 3003):** Microservicio especializado en la generación de reportes clínicos en formato PDF.
 
-El sistema se compone de tres microservicios independientes:
+## 3. Stack Tecnológico
+* **Backend:** Node.js con TypeScript y Express.js.
+* **Persistencia:** PostgreSQL gestionado a través de Prisma ORM (Transacciones ACID).
+* **Infraestructura:** AWS S3 (Almacenamiento de archivos) y Render/Vercel (Despliegue).
 
-1. **Auth Service (Puerto 3001):**
-   * **Responsabilidad:** Gestión de identidad, registro de usuarios, encriptación de credenciales y emisión de tokens (JWT).
-   * **Endpoint Base:** `/api/auth`
+## 4. Especificación de la API (API Spec)
+La API sigue principios REST, utiliza métodos HTTP semánticos y códigos de estado estandarizados.
 
-2. **Core Service (Puerto 3002):**
-   * **Responsabilidad:** Motor principal de la aplicacion. Gestiona las sesiones de crisis, el catálogo de victorias, la lógica de recomendación de cápsulas terapéuticas y la integración con el almacenamiento en la nube.
-   * **Endpoint Base:** `/api/crisis`, `/api/capsules`, `/api/victories`, `/api/s3`, `/api/users`
+### Auth Service (Puerto 3001)
+* `POST /api/auth/register`: Registro de nuevos usuarios. Retorna 201 o 400.
+* `POST /api/auth/login`: Autenticación y entrega de token JWT. Retorna 200 o 401.
 
-3. **Report Service (Puerto 3003):**
-   * **Responsabilidad:** Aislamiento de procesos de cómputo intensivo. Genera documentos clínicos y analíticos en formato vectorial mediante flujos de datos en tiempo real.
-   * **Endpoint Base:** `/api/reports`
+### Core Service (Puerto 3002)
+* `GET /api/s3/presigned-url`: Obtención de URLs firmadas para carga de archivos en S3.
+* `POST /api/capsules`: Creación de cápsulas de contención (Audio/Texto).
+* `GET /api/recommendations`: Motor de filtrado de cápsulas por ID de emoción.
+* `POST /api/crisis`: Inicio de una sesión de crisis e intensidad inicial. Retorna 201.
+* `PUT /api/crisis/:id/reflection`: Cierre transaccional de crisis y registro de reflexión. Retorna 200 o 404.
 
-## Stack Tecnológico
+### Report Service (Puerto 3003)
+* `GET /api/reports/clinical`: Generación de telemetría clínica consolidada.
 
-* **Entorno de Ejecución:** Node.js
-* **Framework Web:** Express.js
-* **Lenguaje:** TypeScript (Tipado estricto)
-* **Base de Datos:** PostgreSQL
-* **ORM:** Prisma ORM
-* **Seguridad y Autenticación:** JSON Web Tokens (JWT) y Bcrypt.js
-* **Infraestructura Cloud:** Amazon Web Services (AWS) S3 para almacenamiento de objetos (Presigned URLs)
-* **Generación de Documentos:** PDFKit
+## 5. Instalación y Ejecución
+Para reproducir el entorno de desarrollo localmente:
 
-## Configuración y Despliegue Local
+1. Clonar el repositorio.
+2. Ejecutar `npm install` en la raíz de cada microservicio.
+3. Configurar el motor de base de datos PostgreSQL.
+4. Ejecutar `npx prisma generate` y `npx prisma db push` para sincronizar el esquema.
+5. Iniciar los servicios ejecutando `npm run dev`.
 
-### Requisitos Previos
-* Node.js (v18 o superior)
-* PostgreSQL instalado y ejecutándose localmente o en la nube
-* Credenciales de acceso a AWS IAM con permisos de escritura en S3
+## 6. Variables de Entorno (.env)
+Es estricto configurar los siguientes parámetros en la raíz del proyecto para la conexión a bases de datos y servicios en la nube:
 
-### Variables de Entorno (.env)
-Se debe crear un archivo `.env` en la raíz del proyecto con las siguientes configuraciones:
-DATABASE_URL="postgresql://usuario:password@localhost:5432/see_db"
-
-
-JWT_SECRET="tu_clave_secreta"
-
-
-AWS_REGION="tu_region"
-
-
-AWS_ACCESS_KEY_ID="tu_access_key"
-
-
-AWS_SECRET_ACCESS_KEY="tu_secret_key"
-
-
-AWS_BUCKET_NAME="tu_bucket"
-
-
-AUTH_PORT=3001
-
-
-CORE_PORT=3002
-
-
-REPORT_PORT=3003
-
-
-
-### Instalación
-
-1. Instalar las dependencias del proyecto:
-   `npm install`
-
-2. Generar el cliente de Prisma y ejecutar las migraciones de la base de datos:
-   `npx prisma generate`
-   `npx prisma migrate dev`
-
-3. Iniciar el clúster de microservicios en entorno de desarrollo:
-   `npm run dev`
-
-El comando anterior utiliza la herramienta `concurrently` para levantar los tres servicios de manera simultánea en la terminal.
+```env
+DATABASE_URL="postgresql://USUARIO:PASSWORD@localhost:5432/seedb"
+JWT_SECRET="clave_secreta_para_tokens"
+AWS_ACCESS_KEY_ID="credencial_aws"
+AWS_SECRET_ACCESS_KEY="secreto_aws"
+AWS_REGION="us-east-1"
+S3_BUCKET_NAME="nombre_del_bucket"
