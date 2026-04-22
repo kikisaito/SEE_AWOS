@@ -1,58 +1,52 @@
-# SEE / AWOS - Sistema de Estabilización Emocional (Backend API)
+# SEE / AWOS - Sistema de Estabilización Emocional (Full Stack)
 
 **Institución:** Universidad Politécnica de Chiapas
-**Desarrolladores:** Jaitovich Bisnaud Jimenez (Kikis), Antonio de Hoyos Hernandez
+**Desarrolladores:** Jaitovich Bisnaud Jimenez (Kikis) y Antonio de Hoyos Hernandez
 **Versión:** 1.0.0
-**Arquitectura:** Service-Based Architecture (SOA) / Monorepo
+**Arquitectura Global:** Service-Oriented Architecture (SOA) + Clean Architecture (MVVM)
 
-## 1. Descripción del Proyecto
-El backend del Sistema de Estabilización Emocional (SEE/AWOS) es una API RESTful diseñada para dar soporte clínico, registros de hábitos y contención de crisis emocionales. El sistema permite el registro de usuarios, seguimiento de métricas de salud mental, almacenamiento de recursos multimedia en la nube y generación de reportes clínicos automatizados en formato PDF.
+---
 
-## 2. Arquitectura de Microservicios
-El proyecto fue construido bajo un enfoque de Arquitectura Basada en Servicios (SOA) utilizando un patrón Monorepo para facilitar el desarrollo local y mantener el acoplamiento débil entre dominios. El sistema se compone de tres microservicios independientes:
+## 1. ¿Qué es el proyecto?
+El Sistema de Estabilización Emocional (**SEE / AWOS** - *A Way Out of Suffering*) es una plataforma integral de grado clínico diseñada para la intervención inmediata en crisis de salud mental. Su propósito principal es brindar contención emocional de baja latencia a través de técnicas de respiración guiadas, cápsulas multimedia personalizadas y el registro de victorias diarias, operando sobre una infraestructura segura y de alta disponibilidad.
 
-* **Auth Service (Puerto 3001):** Gestiona la autenticación, generación de JWT y seguridad multifactor (TOTP).
-* **Core Service (Puerto 3002):** Maneja la lógica de negocio, el ciclo de vida de las crisis, la gestión de cápsulas (integración con AWS S3) y el motor de recomendaciones.
-* **Report Service (Puerto 3003):** Microservicio especializado en la generación de reportes clínicos en formato PDF.
+## 2. ¿Cómo funciona? (Flujo del Sistema)
+El sistema opera mediante una separación estricta de responsabilidades entre el cliente móvil y el servidor:
 
-## 3. Stack Tecnológico
-* **Backend:** Node.js con TypeScript y Express.js.
-* **Persistencia:** PostgreSQL gestionado a través de Prisma ORM (Transacciones ACID).
-* **Infraestructura:** AWS S3 (Almacenamiento de archivos) y Render/Vercel (Despliegue).
+1. **Interacción del Usuario (Frontend):** El usuario ingresa a la app móvil construida en Flutter. La interfaz, gestionada por el patrón **Provider**, reacciona a los estados de la aplicación.
+2. **Consumo de Servicios:** La capa de dominio de la app hace peticiones HTTP (RESTful) hacia los microservicios del backend. El estado de la red y las respuestas (ej. 200 OK, 401 Unauthorized) son interceptadas y manejadas para no colapsar la interfaz.
+3. **Procesamiento de Negocio (Backend):** Los microservicios en Node.js procesan la solicitud. Por ejemplo, si el usuario registra una crisis, el *Core Service* calcula la intensidad y busca recursos multimedia en AWS S3.
+4. **Persistencia (Base de Datos):** El backend utiliza transacciones atómicas (ACID) a través de Prisma ORM para escribir en PostgreSQL. Esto asegura que si una "Crisis" se cierra, la "Victoria" correspondiente se registre simultáneamente; si ocurre un fallo, se hace un *rollback* para mantener la integridad del historial clínico.
 
-## 4. Especificación de la API (API Spec)
-La API sigue principios REST, utiliza métodos HTTP semánticos y códigos de estado estandarizados.
+## 3. Arquitectura y Stack Tecnológico
 
-### Auth Service (Puerto 3001)
-* `POST /api/auth/register`: Registro de nuevos usuarios. Retorna 201 o 400.
-* `POST /api/auth/login`: Autenticación y entrega de token JWT. Retorna 200 o 401.
+El proyecto se divide en dos grandes ecosistemas:
 
-### Core Service (Puerto 3002)
-* `GET /api/s3/presigned-url`: Obtención de URLs firmadas para carga de archivos en S3.
-* `POST /api/capsules`: Creación de cápsulas de contención (Audio/Texto).
-* `GET /api/recommendations`: Motor de filtrado de cápsulas por ID de emoción.
-* `POST /api/crisis`: Inicio de una sesión de crisis e intensidad inicial. Retorna 201.
-* `PUT /api/crisis/:id/reflection`: Cierre transaccional de crisis y registro de reflexión. Retorna 200 o 404.
+### Frontend (Cliente Móvil)
+* **Lenguaje y Framework:** Dart 3.2+ y Flutter 3.41.0.
+* **Patrón de Diseño:** Model-View-ViewModel (MVVM) con principios de Clean Architecture.
+* **Gestión de Estado:** `provider` para inyección de dependencias y reactividad.
+* **Seguridad Local:** `flutter_secure_storage` para la persistencia del token JWT.
+* **Red:** Peticiones asíncronas con `http` y `dio`.
 
-### Report Service (Puerto 3003)
-* `GET /api/reports/clinical`: Generación de telemetría clínica consolidada.
+### Backend (Microservicios SOA)
+* **Lenguaje y Entorno:** TypeScript y Node.js (Express.js).
+* **Microservicios Implementados:**
+  * `Auth Service (3001)`: Gestión de identidades, JWT y seguridad TOTP.
+  * `Core Service (3002)`: Lógica de crisis, recomendaciones y conexión S3.
+  * `Report Service (3003)`: Generación de telemetría y PDFs clínicos.
+* **Base de Datos:** PostgreSQL.
+* **ORM:** Prisma (Gestión de esquemas, migraciones y transacciones atómicas).
+* **Infraestructura Cloud:** AWS S3 (Buckets para audio/imágenes).
 
-## 5. Instalación y Ejecución
-Para reproducir el entorno de desarrollo localmente:
+## 4. Instalación y Despliegue Local
 
-1. Clonar el repositorio.
-2. Ejecutar `npm install` en la raíz de cada microservicio.
-3. Configurar el motor de base de datos PostgreSQL.
-4. Ejecutar `npx prisma generate` y `npx prisma db push` para sincronizar el esquema.
-5. Iniciar los servicios ejecutando `npm run dev`.
+### Requisitos Previos
+* Node.js v18+ y Flutter SDK v3.41+
+* Instancia local o remota de PostgreSQL.
 
-## 6. Variables de Entorno (.env)
-Es estricto configurar los siguientes parámetros en la raíz del proyecto para la conexión a bases de datos y servicios en la nube:
-
-```env
-DATABASE_URL="postgresql://USUARIO:PASSWORD@localhost:5432/seedb"
-JWT_SECRET="clave_secreta_para_tokens"
-AWS_ACCESS_KEY_ID="credencial_aws"
-AWS_SECRET_ACCESS_KEY="secreto_aws"
-AWS_REGION="us-east-1"
-S3_BUCKET_NAME="nombre_del_bucket"
+### Pasos de Ejecución
+1. **Base de Datos:** Clonar el backend, configurar las credenciales en el archivo `.env` y ejecutar la sincronización del esquema:
+   ```bash
+   npx prisma generate
+   npx prisma db push
